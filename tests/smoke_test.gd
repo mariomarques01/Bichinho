@@ -59,7 +59,7 @@ func _run() -> void:
 	await _test_care(game, hud)
 	DirAccess.remove_absolute(game.care.save_path)
 	if failures == 0:
-		print("EVO: 21 verificações passaram.")
+		print("EVO: 24 verificações passaram.")
 	quit(1 if failures > 0 else 0)
 
 func _test_care(game: Node3D, hud: CanvasLayer) -> void:
@@ -67,9 +67,20 @@ func _test_care(game: Node3D, hud: CanvasLayer) -> void:
 	care.needs["Fome"] = 50.0
 	care.stock["Maçã"] = 2
 	hud.tabs[0].pressed.emit()
-	hud.activity.get_child(1).get_child(0).pressed.emit()
+	hud.feeding.action.pressed.emit()
 	await process_frame
-	_expect(care.stock["Maçã"] == 1 and hud.bars["Fome"].value == 65, "Alimentação consome um item e atualiza o HUD")
+	_expect(care.stock["Maçã"] == 1 and hud.feeding.stats["Fome"][1].value == 65, "Alimentação consome um item e atualiza o HUD")
+	await create_timer(0.50).timeout
+	_expect(game.evolin.chew > 0.0, "Confirmar alimento inicia a animação de comer")
+	hud.request_food_drop("Maçã", Vector2(4, 4))
+	await physics_frame
+	await process_frame
+	_expect(care.stock["Maçã"] == 1, "Soltar alimento fora do Evolin preserva o estoque")
+	var drop: Vector2 = game.room.camera.unproject_position(game.evolin.to_global(Vector3(0, 1.42, 0.15)))
+	hud.request_food_drop("Maçã", drop)
+	await physics_frame
+	await process_frame
+	_expect(care.stock["Maçã"] == 0, "Soltar alimento sobre o Evolin consome uma unidade")
 	hud.tabs[1].pressed.emit()
 	care.needs["Higiene"] = 40.0
 	for stroke in 10:
@@ -120,7 +131,11 @@ func _drag(at: Vector2) -> void:
 	root.push_input(event, true)
 
 func _hearts(hud: CanvasLayer) -> int:
-	return hud.get_node("Interface").get_child_count() - 1
+	var count := 0
+	for child in hud.get_node("Interface").get_children():
+		if child is Label and child.text == "♥":
+			count += 1
+	return count
 
 func _expect(condition: bool, check: String) -> void:
 	if not condition:

@@ -15,11 +15,15 @@ var pointer_at := Vector2.ZERO
 var last_sample := Vector2.ZERO
 var sample_pending := false
 var drag_sample := false
+var pending_food := ""
 var ready_at := 0
 
 func _ready() -> void:
 	add_child(care)
 	hud.bind_care(care)
+	hud.activity_changed.connect(_activity_changed)
+	hud.food_drop.connect(_food_drop)
+	get_viewport().size_changed.connect(_update_mouth)
 	care.changed.connect(_refresh_rest)
 	_refresh_rest()
 	evolin.reacted.connect(hud.show_reaction)
@@ -34,6 +38,19 @@ func _ready() -> void:
 			hud.set_night(room.toggle_lamp())
 	)
 
+func _activity_changed(index: int) -> void:
+	room.set_feeding(index == 0)
+	pending_food = ""
+	sample_pending = false
+	_update_mouth()
+
+func _update_mouth() -> void:
+	hud.feeding.mouth_position = room.camera.unproject_position(evolin.to_global(Vector3(0, 1.29, 0.94)))
+
+func _food_drop(food: String, at: Vector2) -> void:
+	pending_food = food
+	_sample(at)
+
 func _refresh_rest() -> void:
 	var sleeping := care.rest_end > 0
 	evolin.sleeping = sleeping
@@ -44,6 +61,8 @@ func _refresh_rest() -> void:
 		was_sleeping = sleeping
 
 func _unhandled_input(event: InputEvent) -> void:
+	if hud.menu.mode == 0:
+		return
 	# Godot maps the primary Android touch to mouse events for both UI and the room.
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 		_sample(event.position)
@@ -68,7 +87,13 @@ func _physics_process(_delta: float) -> void:
 	ray.collide_with_bodies = false
 	ray.collide_with_areas = true
 	var hit := get_world_3d().direct_space_state.intersect_ray(ray)
-	if not hit.is_empty():
+	if not pending_food.is_empty():
+		var food := pending_food
+		pending_food = ""
+		if not hit.is_empty() and hud.menu.mode == 0:
+			hud.feeding.serve(food, pointer_at)
+		return
+	if not hit.is_empty() and hud.menu.mode != 0:
 		if hud.menu.mode == 1:
 			if drag_sample and hud.menu.scrub():
 				hud.bubble(pointer_at)

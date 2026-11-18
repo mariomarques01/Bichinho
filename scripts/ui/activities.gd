@@ -33,13 +33,12 @@ func paint() -> void:
 	for node in hud.activity.get_children():
 		hud.activity.remove_child(node)
 		node.queue_free()
-	hud.activity.visible = mode >= 0
-	if mode < 0:
+	hud.activity.visible = mode > 0
+	if mode <= 0:
 		return
 	var title: Label = hud._label(hud.activity, TITLES[mode], 39)
 	title.add_theme_color_override("font_color", Color("#ffe3bb"))
 	match mode:
-		0: _food()
 		1:
 			hud._label(hud.activity, "Deslize sobre o Evolin para ensaboar.", 30)
 			wash_meter = hud.meter(hud.activity, Color("#63dfff"))
@@ -57,18 +56,6 @@ func _grid(columns: int) -> GridContainer:
 	grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hud.activity.add_child(grid)
 	return grid
-
-func _food() -> void:
-	var grid := _grid(2)
-	for food: String in Care.FOODS:
-		var detail := " ×%d  +%d" % [care.stock[food], Care.FOODS[food]] if care.stock[food] > 0 else " · 5 moedas"
-		hud._button(grid, food + detail, Color(COLORS[0])).pressed.connect(func() -> void:
-			var before: int = care.stock[food]
-			hud.show_reaction(care.feed(food))
-			if care.stock[food] < before:
-				hud.food_eaten.emit()
-			paint.call_deferred()
-		)
 
 func _rest() -> void:
 	rest_status = hud._label(hud.activity, "", 30)

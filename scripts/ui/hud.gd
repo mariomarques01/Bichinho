@@ -2,12 +2,17 @@ extends CanvasLayer
 
 const Activities = preload("res://scripts/ui/activities.gd")
 
+const Feeding = preload("res://scripts/ui/feeding.gd")
+
 signal food_eaten
+signal food_drop(food: String, at: Vector2)
+signal activity_changed(index: int)
 signal pet_requested
 signal jump_requested
 signal lamp_requested
 
 @onready var safe: MarginContainer = $Interface/SafeArea
+var feeding: Feeding
 var feedback: Label
 var lamp_button: Button
 var feedback_time: Timer
@@ -22,6 +27,11 @@ var tabs: Array[Button] = []
 func bind_care(care: Node) -> void:
 	menu.hud = self
 	menu.care = care
+	feeding = Feeding.new()
+	$Interface.add_child(feeding)
+	feeding.setup(self, care)
+	_update_safe_area()
+	feeding.close()
 	care.changed.connect(_refresh)
 	_refresh()
 
@@ -32,11 +42,18 @@ func _refresh() -> void:
 		bars[key].value = care.needs[key]
 		values[key].text = "%s  %d%%" % [key, roundi(care.needs[key])]
 	menu.refresh()
+	feeding.refresh()
 
 func _open(index: int) -> void:
 	var next := -1 if menu.mode == index else index
 	menu.enter(next)
-	activity_card.visible = next >= 0
+	activity_card.visible = next > 0
+	safe.visible = next != 0
+	if next == 0:
+		feeding.open()
+	else:
+		feeding.close()
+	activity_changed.emit(next)
 	for i in tabs.size():
 		tabs[i].set_pressed_no_signal(i == next)
 	feedback_time.stop()
@@ -63,6 +80,10 @@ func _update_safe_area() -> void:
 			top += roundi(maxi(0, usable.position.y) * scale_factor.y)
 			right += roundi(maxi(0, screen.x - usable.end.x) * scale_factor.x)
 			bottom += roundi(maxi(0, screen.y - usable.end.y) * scale_factor.y)
+	if is_instance_valid(feeding):
+		var margins := {"left": left, "right": right, "top": top, "bottom": bottom}
+		for edge: String in margins:
+			feeding.add_theme_constant_override("margin_" + edge, margins[edge])
 	safe.add_theme_constant_override("margin_left", left)
 	safe.add_theme_constant_override("margin_right", right)
 	safe.add_theme_constant_override("margin_top", top)
@@ -128,6 +149,9 @@ func _build() -> void:
 	feedback_time.one_shot = true
 	feedback_time.timeout.connect(func() -> void: feedback.text = "Toque ou deslize sobre o Evolin" if menu.mode < 0 else "")
 	add_child(feedback_time)
+
+func request_food_drop(food: String, at: Vector2) -> void:
+	food_drop.emit(food, at)
 
 func show_reaction(message: String) -> void:
 	feedback.text = message

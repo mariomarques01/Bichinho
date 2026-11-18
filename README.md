@@ -1,6 +1,6 @@
 # EVO — Seu bichinho, suas escolhas, sua evolução
 
-EVO é um simulador de bichinho virtual em desenvolvimento. O HUD mostra as quatro necessidades, o nível, o XP e as moedas. Use o menu inferior para alimentar, dar banho, descansar, fazer carinho, jogar Memória Mágica ou misturar ingredientes. Toque no mesmo botão de menu para voltar ao quarto. As ações e o descanso são salvos localmente.
+EVO é um simulador de bichinho virtual em desenvolvimento. O HUD mostra as quatro necessidades, o nível, o XP e as moedas. Use o menu inferior para alimentar, dar banho, descansar, fazer carinho, jogar Memória Mágica ou misturar ingredientes. Em Alimentar, arraste um alimento até o Evolin ou selecione-o e toque em **Alimentar**. Use a seta para voltar ao quarto. Nos demais menus, toque novamente no botão da atividade para fechar. As ações e o descanso são salvos localmente.
 
 - [Jogar no GitHub Pages](https://mariomarques01.github.io/Bichinho/)
 - [Baixar o projeto editável da Godot](https://mariomarques01.github.io/Bichinho/EVO-Godot.zip)

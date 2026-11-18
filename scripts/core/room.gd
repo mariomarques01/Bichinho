@@ -1,5 +1,6 @@
 extends Node3D
 
+const FEEDING_BACKDROP = preload("res://assets/textures/feeding/quarto.jpg")
 const Geo = preload("res://scripts/core/geometry.gd")
 
 @onready var camera: Camera3D = $Camera
@@ -8,12 +9,34 @@ const Geo = preload("res://scripts/core/geometry.gd")
 var sky: StandardMaterial3D
 var lamp: StandardMaterial3D
 var night := false
+var backdrop: CanvasLayer
 
 func _ready() -> void:
 	camera.look_at(Vector3(0, 1.54, -0.38))
 	get_viewport().size_changed.connect(_frame_camera)
 	_frame_camera()
 	_build_room()
+	for light in [$Sun, $Fill, $LampLight]:
+		light.layers = 3
+	backdrop = CanvasLayer.new()
+	backdrop.layer = -1
+	add_child(backdrop)
+	var scenery := TextureRect.new()
+	scenery.texture = FEEDING_BACKDROP
+	scenery.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	scenery.stretch_mode = TextureRect.STRETCH_SCALE
+	scenery.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	backdrop.add_child(scenery)
+	scenery.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	backdrop.hide()
+
+func set_feeding(enabled: bool) -> void:
+	backdrop.visible = enabled
+	world.environment.background_mode = Environment.BG_CANVAS if enabled else Environment.BG_CLEAR_COLOR
+	world.environment.background_canvas_max_layer = -1
+	camera.cull_mask = 2 if enabled else 3
+	camera.v_offset = -0.96 if enabled else 0.0
+	camera.h_offset = 0.22 if enabled else 0.0
 
 func _frame_camera() -> void:
 	var size := get_viewport().get_visible_rect().size

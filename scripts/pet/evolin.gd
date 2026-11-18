@@ -26,6 +26,7 @@ var tail_axis := Vector3.UP
 
 func _ready() -> void:
 	face = $Rig/Pose/Model.find_children("*", "MeshInstance3D", true, false)[0] as MeshInstance3D
+	face.layers = 2
 	eyelids.shader = EYELID_SHADER
 	var material := face.get_active_material(0).duplicate() as StandardMaterial3D
 	material.metallic = 0.0
@@ -80,6 +81,7 @@ func pet() -> void:
 
 func eat() -> void:
 	chew = 0.64
+	delight = AFFECTION_DURATION
 
 func jump() -> void:
 	if reaction and reaction.is_running():

@@ -10,6 +10,10 @@ A interface acompanha as reações do Evolin, mostra corações e oferece botõe
 
 O HUD mostra fome, higiene, energia, felicidade, XP, nível e moedas. Os seis menus permitem alimentar com cinco itens, tomar banho por arraste, descansar por 30, 60 ou 180 minutos, ganhar felicidade com carinho, jogar Memória Mágica com três pares e descobrir três receitas. As ações gravam um perfil local. O descanso recupera energia com base no tempo decorrido, inclusive com o jogo fechado.
 
+## Tela Alimentar
+
+A tela usa um cenário ilustrado e o Evolin 3D em tempo real. A bandeja mostra os alimentos e as quantidades efetivas. A prévia mostra a fome antes e depois. Toque para selecionar e confirmar ou arraste e solte sobre o Evolin. A colisão valida a entrega, e o alimento vai até a boca antes da reação de mastigar.
+
 ## Arquivos
 
 | Área | Arquivos |
@@ -25,7 +29,7 @@ O HUD mostra fome, higiene, energia, felicidade, XP, nível e moedas. Os seis me
 
 - Importação por `godot --headless --editor --path . --import`.
 - Inicialização da cena principal por `godot --headless --path . --quit-after 50`.
-- Teste de integração por `godot --headless --path . --script res://tests/smoke_test.gd`. Vinte e uma verificações aprovadas, cobrindo piscada, reação facial ao carinho, acerto e erro de toque, arraste, ciclo de vida dos corações, intervalo mínimo, iluminação e pulo.
+- Teste de integração por `godot --headless --path . --script res://tests/smoke_test.gd`. Vinte e quatro verificações aprovadas, cobrindo piscada, reação facial ao carinho, acerto e erro de toque, arraste, ciclo de vida dos corações, intervalo mínimo, iluminação e pulo.
 - Renderização Compatibility em Linux via Mesa llvmpipe. O driver virtual reporta uma advertência de VSync.
 
 - Exportação Web sem threads com os templates oficiais da Godot 4.6.3. O GitHub Pages serviu o HTML, JavaScript, WebAssembly e PCK com HTTP 200.
