@@ -1,6 +1,8 @@
 extends MarginContainer
 
 const Activities = preload("res://scripts/ui/activities.gd")
+const Blink = preload("res://scripts/pet/blink.gd")
+const SPRITE_BLINK = preload("res://scripts/ui/sprite_blink.gdshader")
 const Care = preload("res://scripts/needs/care.gd")
 const REFERENCE = preload("res://assets/textures/feeding/referencia.jpg")
 const SHEET = preload("res://assets/textures/feeding/sprites.jpg")
@@ -46,6 +48,7 @@ var pointer_food := ""
 var ghost: TextureRect
 var animating := false
 var idle_clock := 0.0
+var eyelids := ShaderMaterial.new()
 var food_motion: Tween
 var serving_icon: TextureRect
 var shopping := false
@@ -76,6 +79,11 @@ func setup(owner_hud: CanvasLayer, manager: Care) -> void:
 	contact_shadow.stretch_mode = TextureRect.STRETCH_SCALE
 	contact_shadow.z_index = -2
 	character = _icon(canvas, idle_pose, Vector2.ZERO)
+	eyelids.shader = SPRITE_BLINK
+	eyelids.set_shader_parameter("left_eye", Vector4(0.486, 0.419, 0.133, 0.113))
+	eyelids.set_shader_parameter("right_eye", Vector4(0.808, 0.389, 0.083, 0.107))
+	eyelids.set_shader_parameter("lid_color", Color("#49dbc9"))
+	character.material = eyelids
 	character.z_index = -1
 	canvas.resized.connect(_frame_character)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -258,6 +266,7 @@ func _process(delta: float) -> void:
 	if not visible or animating:
 		return
 	idle_clock += delta
+	eyelids.set_shader_parameter("closure", Blink.closure(idle_clock))
 	var breath := sin(idle_clock * 3.4)
 	character.pivot_offset = character.size * Vector2(0.5, 1.0)
 	character.scale = Vector2(1.0 - breath * 0.008, 1.0 + breath * 0.018)
@@ -337,6 +346,7 @@ func serve(food: String, at: Vector2) -> void:
 	if care.stock[food] >= before:
 		return
 	animating = true
+	eyelids.set_shader_parameter("closure", 0.0)
 	hud.play_sound(&"comida")
 	refresh()
 	var bite := _icon(canvas, art[food], Vector2.ZERO)

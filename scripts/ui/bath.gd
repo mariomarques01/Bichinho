@@ -1,5 +1,6 @@
 extends Control
 
+const Blink = preload("res://scripts/pet/blink.gd")
 const Care = preload("res://scripts/needs/care.gd")
 const MOTION = preload("res://scripts/ui/bath_motion.gdshader")
 const REFERENCE = preload("res://assets/textures/bath/banho.jpg")
@@ -25,6 +26,7 @@ var care: Care
 var portrait: TextureRect
 var movement := ShaderMaterial.new()
 var reaction: Tween
+var idle_clock := 0.0
 var xp: ProgressBar
 var coins: Label
 var level: Label
@@ -53,6 +55,7 @@ func setup(owner_hud: CanvasLayer, profile: Care) -> void:
 	theme = hud.safe.theme
 	portrait = _texture(self, REFERENCE, Rect2(Vector2.ZERO, DESIGN))
 	movement.shader = MOTION
+	movement.set_shader_parameter("atlas_art", ATLAS)
 	portrait.material = movement
 	for region: Rect2i in TOOL_SPRITES:
 		assets.append(_cutout(region))
@@ -73,6 +76,12 @@ func setup(owner_hud: CanvasLayer, profile: Care) -> void:
 	get_parent().resized.connect(_frame)
 	_frame()
 	close()
+
+func _process(delta: float) -> void:
+	if not visible:
+		return
+	idle_clock += delta
+	movement.set_shader_parameter("opening", 1.0 - Blink.closure(idle_clock))
 
 func _frame() -> void:
 	scale = get_parent().size / DESIGN

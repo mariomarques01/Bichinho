@@ -19,6 +19,10 @@ func _run() -> void:
 	var pulse: float = hud.home.idle_clock
 	await create_timer(0.12).timeout
 	_expect(hud.home.idle_clock > pulse, "Evolin respira no quarto")
+	hud.home.idle_clock = 3.735
+	hud.home._process(0.0)
+	_expect(float(hud.home.eyelids.get_shader_parameter("closure")) > 0.95, "Quarto pisca em repouso")
+	hud.home.idle_clock = 0.0
 	var head: Vector2 = hud.home.pet_point()
 	_click(Vector2(4, 4))
 	await physics_frame
@@ -69,7 +73,7 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 	if failures == 0:
-		print("EVO: 37 verificações passaram.")
+		print("EVO: 40 verificações passaram.")
 	quit(1 if failures > 0 else 0)
 
 func _test_care(game: Node3D, hud: CanvasLayer) -> void:
@@ -79,6 +83,9 @@ func _test_care(game: Node3D, hud: CanvasLayer) -> void:
 	hud.home.action_buttons[0].pressed.emit()
 	_expect(hud.home.action_buttons[0].choosing and hud.home.visible, "Toque anima o botão antes de abrir a atividade")
 	await hud.home.action_buttons[0].chosen
+	hud.feeding.idle_clock = 3.735
+	hud.feeding._process(0.0)
+	_expect(float(hud.feeding.eyelids.get_shader_parameter("closure")) > 0.95, "Alimentar pisca antes de receber comida")
 	var drop: Vector2 = hud.feeding.character.get_global_rect().get_center()
 	hud.request_food_drop("Maçã", drop)
 	await process_frame
@@ -98,6 +105,9 @@ func _test_care(game: Node3D, hud: CanvasLayer) -> void:
 	_expect(not hud.feeding.animating and hud.feeding.character.texture == hud.feeding.idle_pose, "Sair de Alimentar encerra a mastigação")
 	hud.home.action_buttons[1].pressed.emit()
 	await hud.home.action_buttons[1].chosen
+	hud.bath.idle_clock = 3.735
+	hud.bath._process(0.0)
+	_expect(float(hud.bath.movement.get_shader_parameter("opening")) < 0.05, "Higienizar pisca enquanto espera")
 	care.needs["Higiene"] = 40.0
 	_expect(hud.bath.visible and not hud.safe.visible, "Higienizar abre a tela ilustrada dedicada")
 	hud.bath.scrub(Vector2(20, 10))

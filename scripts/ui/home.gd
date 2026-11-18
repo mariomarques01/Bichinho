@@ -2,6 +2,8 @@ extends Control
 
 const Action = preload("res://scripts/ui/home_action.gd")
 const SHARPEN = preload("res://scripts/ui/home_sharpen.gdshader")
+const Blink = preload("res://scripts/pet/blink.gd")
+const SPRITE_BLINK = preload("res://scripts/ui/sprite_blink.gdshader")
 const Care = preload("res://scripts/needs/care.gd")
 const SHEET = preload("res://assets/textures/home/atlas.jpg")
 const DESIGN := Vector2(720, 1280)
@@ -34,6 +36,7 @@ var action_buttons: Array[Action] = []
 var sharpen := ShaderMaterial.new()
 var reaction: Tween
 var idle_clock := 0.0
+var eyelids := ShaderMaterial.new()
 var sleeping := false
 
 func setup(owner_hud: CanvasLayer, profile: Care) -> void:
@@ -54,6 +57,7 @@ func _process(delta: float) -> void:
 	if not visible or (reaction and reaction.is_running()):
 		return
 	idle_clock += delta
+	eyelids.set_shader_parameter("closure", 1.0 if sleeping else Blink.closure(idle_clock))
 	var breath := sin(idle_clock * (1.65 if sleeping else 2.75))
 	character.scale = Vector2(1.0 - breath * 0.012, 1.0 + breath * 0.022)
 	character.rotation = sin(idle_clock * 1.45) * 0.020
@@ -87,6 +91,11 @@ func _build_room() -> void:
 	shade_texture.fill_to = Vector2(1.0, 0.5)
 	_picture(shade_texture, Rect2(143, 765, 296, 63))
 	character = _picture(_cutout(PET), PET_RECT)
+	eyelids.shader = SPRITE_BLINK
+	eyelids.set_shader_parameter("left_eye", Vector4(0.341, 0.419, 0.111, 0.087))
+	eyelids.set_shader_parameter("right_eye", Vector4(0.652, 0.419, 0.111, 0.087))
+	eyelids.set_shader_parameter("lid_color", Color("#2ad1d1"))
+	character.material = eyelids
 	character.pivot_offset = PET_RECT.size * Vector2(0.5, 1.0)
 	_hit("Luminária", Rect2(618, 399, 94, 240)).pressed.connect(_lamp)
 
@@ -165,6 +174,7 @@ func react() -> void:
 		reaction.kill()
 	character.scale = Vector2.ONE
 	character.rotation = 0.0
+	eyelids.set_shader_parameter("closure", 1.0)
 	reaction = create_tween()
 	reaction.tween_property(character, "scale", Vector2(1.055, 0.94), 0.13)
 	reaction.parallel().tween_property(character, "rotation", -0.065, 0.13)
