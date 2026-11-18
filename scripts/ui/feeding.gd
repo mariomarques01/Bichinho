@@ -2,9 +2,16 @@ extends MarginContainer
 
 const Activities = preload("res://scripts/ui/activities.gd")
 const Care = preload("res://scripts/needs/care.gd")
+const REFERENCE = preload("res://assets/textures/feeding/referencia.jpg")
 const SHEET = preload("res://assets/textures/feeding/sprites.jpg")
 const PROFILE_ICON := Rect2(790, 18, 62, 66)
 const HUNGER_ICON := Rect2(791, 101, 49, 49)
+const NAVBAR := Rect2i(10, 700, 589, 134)
+const TABS := [
+	Rect2(16, 950, 144, 153), Rect2(160, 955, 136, 145),
+	Rect2(295, 957, 135, 143), Rect2(430, 956, 135, 144),
+	Rect2(565, 957, 138, 143),
+]
 const FOOD_NAMES := {"Sanduíche": "Carne", "Biscoito": "Cupcake"}
 const IDLE := Rect2i(16, 13, 180, 187)
 const EATING := Rect2i(391, 13, 175, 185)
@@ -37,6 +44,7 @@ var press_position := Vector2.ZERO
 var pointer_food := ""
 var ghost: TextureRect
 var animating := false
+var shopping := false
 var character: TextureRect
 var idle_pose: Texture2D
 var eating_pose: Texture2D
@@ -92,20 +100,26 @@ func _build() -> void:
 	var needs := HBoxContainer.new()
 	needs.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_child(needs)
+	var stat_icons := [HUNGER_ICON, Rect2(911, 100, 52, 52), Rect2(1030, 101, 53, 53), Rect2(1149, 100, 53, 53)]
 	for key: String in care.needs:
-		var frame: PanelContainer = hud._panel(needs, Color("#321d3ce6"), 13)
+		var frame: PanelContainer = hud._panel(needs, Color("#321d3ce6"), 10)
 		frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var line := HBoxContainer.new()
+		line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		frame.add_child(line)
+		_icon(line, _atlas(stat_icons[stats.size()]), Vector2(51, 64))
 		var metric := VBoxContainer.new()
 		metric.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		frame.add_child(metric)
-		var label := _label(metric, key, 29)
+		metric.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		line.add_child(metric)
+		var label := _label(metric, key, 26)
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		stats[key] = [label, hud.meter(metric, Color("#91e52b"))]
 	var gap := Control.new()
 	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	gap.custom_minimum_size.y = 72
+	gap.custom_minimum_size.y = 165
 	column.add_child(gap)
-	var title := _icon(column, _sprite(TITLE), Vector2(455, 128))
+	var title := _icon(column, _sprite(TITLE), Vector2(520, 146))
 	title.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	var stage := Control.new()
 	stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -114,7 +128,7 @@ func _build() -> void:
 	var preview: PanelContainer = hud._panel(stage, Color("#3d234ae8"), 19)
 	preview.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
 	preview.offset_left = -315
-	preview.offset_top = 23
+	preview.offset_top = 143
 	preview.offset_right = 0
 	var preview_body := VBoxContainer.new()
 	preview_body.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -176,32 +190,54 @@ func _build() -> void:
 func _navigation(parent: Control) -> void:
 	var row := HBoxContainer.new()
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_theme_constant_override("separation", 10)
+	row.add_theme_constant_override("separation", 0)
 	parent.add_child(row)
-	var icons := [
-		Rect2(803, 183, 48, 44), Rect2(1049, 184, 51, 43),
-		Rect2(798, 256, 57, 45), Rect2(1045, 254, 56, 45),
-		Rect2(799, 325, 57, 46), Rect2(1037, 324, 47, 46),
-	]
-	for index in icons.size():
-		var tab: Button = hud._button(row, "", Color(Activities.COLORS[index]))
-		tab.custom_minimum_size.y = 146
+	for index in TABS.size():
+		var tab := TextureButton.new()
+		tab.texture_normal = _rounded_tab(TABS[index])
+		tab.ignore_texture_size = true
+		tab.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
+		tab.custom_minimum_size.y = 166
+		tab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		tab.accessibility_name = Activities.TITLES[index]
-		var rim := Color("#ffe17f") if index == 0 else Color("#dcbbea")
-		tab.add_theme_stylebox_override("normal", _plate(Color(Activities.COLORS[index]), rim, 32, 0))
 		if index != 0:
 			tab.pressed.connect(hud._open.bind(index))
-		var icon := _icon(tab, _atlas(icons[index]), Vector2.ZERO)
-		icon.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		icon.offset_top = 13
-		icon.offset_bottom = -42
-		var label := _label(tab, Activities.TITLES[index], 21)
-		label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-		label.offset_top = -39
-		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		row.add_child(tab)
+
+	var bottom := _icon(parent, _sprite(NAVBAR), Vector2(0, 224))
+	var captions := ["Evolução", "Inventário", "Quarto", "Missões", "Loja"]
+	for index in captions.size():
+		var hotspot := Button.new()
+		hotspot.flat = true
+		hotspot.accessibility_name = captions[index]
+		hotspot.tooltip_text = captions[index]
+		bottom.add_child(hotspot)
+		hotspot.anchor_left = float(index) / captions.size()
+		hotspot.anchor_right = float(index + 1) / captions.size()
+		hotspot.anchor_bottom = 1.0
+		match index:
+			0, 3:
+				hotspot.disabled = true
+				hotspot.focus_mode = Control.FOCUS_NONE
+			1:
+				hotspot.pressed.connect(func() -> void:
+					shopping = false
+					refresh()
+					message.text = "Inventário · selecione um alimento ou arraste."
+					cards[selected].grab_focus()
+				)
+			2:
+				hotspot.pressed.connect(func() -> void: hud._open(0))
+			4:
+				hotspot.pressed.connect(func() -> void:
+					shopping = not shopping
+					refresh()
+					message.text = "Loja · escolha um alimento para repor." if shopping else "Arraste o alimento até o Evolin."
+				)
 
 func open() -> void:
 	show()
+	shopping = false
 	character.show()
 	_frame_character()
 	_select(selected)
@@ -224,8 +260,8 @@ func refresh() -> void:
 	hunger.text = "%d%%  →  %d%%" % [current, preview]
 	gauge.value = preview
 	food_detail.text = "%s  ·  +%d de fome" % [FOOD_NAMES.get(selected, selected), Care.FOODS[selected]]
-	action.text = "Comprar %s · 5 moedas" % FOOD_NAMES.get(selected, selected) if available == 0 else "Alimentar"
-	action.disabled = animating or care.rest_end > 0 or (available > 0 and care.needs["Fome"] >= 99.0)
+	action.text = "Comprar %s · 5 moedas" % FOOD_NAMES.get(selected, selected) if available == 0 or shopping else "Alimentar"
+	action.disabled = animating or care.rest_end > 0 or (not shopping and available > 0 and care.needs["Fome"] >= 99.0)
 	for food: String in cards:
 		counts[food].text = "×%d" % care.stock[food]
 
@@ -276,6 +312,9 @@ func _cancel_drag() -> void:
 	ghost = null
 
 func _confirm() -> void:
+	if shopping:
+		message.text = _food_message(selected, care.buy(selected))
+		return
 	var tile: Button = cards[selected]
 	serve(selected, tile.get_global_rect().get_center(), true)
 
@@ -286,9 +325,7 @@ func serve(food: String, at: Vector2, allow_purchase := false) -> void:
 		message.text = "Esse alimento acabou."
 		return
 	var before: int = care.stock[food]
-	message.text = care.feed(food)
-	if FOOD_NAMES.has(food):
-		message.text = message.text.replace(food, FOOD_NAMES[food]).replace(food.to_lower(), String(FOOD_NAMES[food]).to_lower())
+	message.text = _food_message(food, care.feed(food))
 	if care.stock[food] >= before:
 		return
 	animating = true
@@ -316,6 +353,10 @@ func serve(food: String, at: Vector2, allow_purchase := false) -> void:
 		animating = false
 		refresh()
 	)
+
+func _food_message(food: String, text: String) -> String:
+	var label: String = FOOD_NAMES.get(food, food)
+	return text.replace(food, label).replace(food.to_lower(), label.to_lower())
 
 func _frame_character() -> void:
 	var stage := canvas.size
@@ -355,6 +396,19 @@ func _sprite(region: Rect2i) -> ImageTexture:
 		image.set_pixelv(pixel, Color.TRANSPARENT)
 		for direction in [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]:
 			queue.append(pixel + direction)
+	return ImageTexture.create_from_image(image)
+
+func _rounded_tab(region: Rect2) -> ImageTexture:
+	var image := REFERENCE.get_image().get_region(Rect2i(region))
+	image.convert(Image.FORMAT_RGBA8)
+	var dimensions := Vector2(image.get_size())
+	for y in image.get_height():
+		for x in image.get_width():
+			var uv := (Vector2(x, y) + Vector2(0.5, 0.5)) / dimensions
+			var distance := ((uv - Vector2(0.5, 0.5)).abs() - Vector2(0.29, 0.29)).max(Vector2.ZERO).length()
+			var color := image.get_pixel(x, y)
+			color.a = 1.0 - smoothstep(0.185, 0.215, distance)
+			image.set_pixel(x, y, color)
 	return ImageTexture.create_from_image(image)
 
 func _atlas(region: Rect2) -> AtlasTexture:

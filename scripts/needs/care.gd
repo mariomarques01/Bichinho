@@ -65,12 +65,7 @@ func feed(food: String) -> String:
 	if not FOODS.has(food):
 		return ""
 	if stock[food] <= 0:
-		if coins < 5:
-			return "Você precisa de 5 moedas para repor."
-		coins -= 5
-		stock[food] += 1
-		_commit()
-		return "%s no inventário." % food
+		return buy(food)
 	if needs["Fome"] >= 99.0:
 		return "Evolin já está de barriga cheia."
 	stock[food] -= 1
@@ -78,6 +73,16 @@ func feed(food: String) -> String:
 	xp += 5
 	_commit()
 	return "Evolin comeu %s!" % food.to_lower()
+
+func buy(food: String) -> String:
+	if not FOODS.has(food):
+		return ""
+	if coins < 5:
+		return "Você precisa de 5 moedas para repor."
+	coins -= 5
+	stock[food] += 1
+	_commit()
+	return "%s no inventário." % food
 
 func wash() -> void:
 	if needs["Higiene"] >= 99.0:
