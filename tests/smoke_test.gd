@@ -67,17 +67,17 @@ func _test_care(game: Node3D, hud: CanvasLayer) -> void:
 	care.needs["Fome"] = 50.0
 	care.stock["Maçã"] = 2
 	hud.tabs[0].pressed.emit()
-	hud.feeding.action.pressed.emit()
+	var drop: Vector2 = hud.feeding.character.get_global_rect().get_center()
+	hud.request_food_drop("Maçã", drop)
 	await process_frame
 	_expect(care.stock["Maçã"] == 1 and hud.feeding.stats["Fome"][1].value == 65, "Alimentação consome um item e atualiza o HUD")
 	await create_timer(0.50).timeout
-	_expect(hud.feeding.character.texture == hud.feeding.eating_pose, "Confirmar alimento inicia a animação de comer")
+	_expect(hud.feeding.character.texture == hud.feeding.eating_pose, "Soltar o alimento inicia a animação de comer")
 	await create_timer(0.62).timeout
 	hud.request_food_drop("Maçã", Vector2(4, 4))
 	await physics_frame
 	await process_frame
 	_expect(care.stock["Maçã"] == 1, "Soltar alimento fora do Evolin preserva o estoque")
-	var drop: Vector2 = hud.feeding.character.get_global_rect().get_center()
 	hud.request_food_drop("Maçã", drop)
 	await physics_frame
 	await process_frame

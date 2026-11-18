@@ -5,7 +5,11 @@ const Care = preload("res://scripts/needs/care.gd")
 const REFERENCE = preload("res://assets/textures/feeding/referencia.jpg")
 const SHEET = preload("res://assets/textures/feeding/sprites.jpg")
 const PROFILE_ICON := Rect2(790, 18, 62, 66)
-const HUNGER_ICON := Rect2(791, 101, 49, 49)
+const STATUS_ICONS := [
+	Rect2(790, 101, 51, 51), Rect2(909, 101, 52, 52),
+	Rect2(1029, 101, 52, 52), Rect2(1148, 100, 53, 53),
+]
+const COIN_ICON := Rect2(999, 23, 42, 42)
 const NAVBAR := Rect2i(10, 700, 589, 134)
 const TABS := [
 	Rect2(16, 950, 144, 153), Rect2(160, 955, 136, 145),
@@ -34,9 +38,6 @@ var art: Dictionary = {}
 var profile: Label
 var wallet: Label
 var stats: Dictionary = {}
-var hunger: Label
-var gauge: ProgressBar
-var action: Button
 var message: Label
 var food_detail: Label
 var canvas: Control
@@ -100,63 +101,48 @@ func _build() -> void:
 	var identity := HBoxContainer.new()
 	identity.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.add_child(identity)
-	_icon(identity, _atlas(PROFILE_ICON), Vector2(88, 88))
+	_icon(identity, _round_icon(PROFILE_ICON), Vector2(98, 98))
 	var info := VBoxContainer.new()
 	info.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	identity.add_child(info)
 	_label(info, "Meu EVO", 37)
 	profile = _label(info, "", 28)
-	wallet = _label(hud._panel(header, Color("#38203fe8"), 16), "", 32)
+	var purse: PanelContainer = hud._panel(header, Color("#301a37e8"), 14)
+	var balance := HBoxContainer.new()
+	balance.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	purse.add_child(balance)
+	_icon(balance, _round_icon(COIN_ICON), Vector2(69, 69))
+	wallet = _label(balance, "", 33)
 	wallet.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 
 	var needs := HBoxContainer.new()
 	needs.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_child(needs)
-	var stat_icons := [HUNGER_ICON, Rect2(911, 100, 52, 52), Rect2(1030, 101, 53, 53), Rect2(1149, 100, 53, 53)]
+	needs.add_theme_constant_override("separation", 9)
 	for key: String in care.needs:
-		var frame: PanelContainer = hud._panel(needs, Color("#321d3ce6"), 10)
+		var frame: PanelContainer = hud._panel(needs, Color("#321d3cee"), 10)
+		frame.add_theme_stylebox_override("panel", _plate(Color("#321d3cee"), Color("#a885b0"), 40, 11))
 		frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var line := HBoxContainer.new()
 		line.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		frame.add_child(line)
-		_icon(line, _atlas(stat_icons[stats.size()]), Vector2(51, 64))
+		_icon(line, _round_icon(STATUS_ICONS[stats.size()]), Vector2(84, 90))
 		var metric := VBoxContainer.new()
 		metric.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		metric.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		line.add_child(metric)
-		var label := _label(metric, key, 26)
+		metric.add_theme_constant_override("separation", 0)
+		var label := _label(metric, "Sono" if key == "Energia" else key, 24)
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		stats[key] = [label, hud.meter(metric, Color("#91e52b"))]
-	var gap := Control.new()
-	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	gap.custom_minimum_size.y = 165
-	column.add_child(gap)
+		var amount := _label(metric, "", 31)
+		amount.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		stats[key] = [amount, hud.meter(metric, Color("#91e52b"))]
 	var title := _icon(column, _sprite(TITLE), Vector2(520, 146))
 	title.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	var stage := Control.new()
 	stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stage.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	column.add_child(stage)
-	var preview: PanelContainer = hud._panel(stage, Color("#3d234ae8"), 19)
-	preview.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	preview.offset_left = -315
-	preview.offset_top = 143
-	preview.offset_right = 0
-	var preview_body := VBoxContainer.new()
-	preview_body.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	preview.add_child(preview_body)
-	var preview_head := HBoxContainer.new()
-	preview_head.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	preview_body.add_child(preview_head)
-	_icon(preview_head, _atlas(HUNGER_ICON), Vector2(61, 61))
-	var preview_text := VBoxContainer.new()
-	preview_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	preview_head.add_child(preview_text)
-	_label(preview_text, "Fome", 29)
-	hunger = _label(preview_text, "", 30)
-	gauge = hud.meter(preview_body, Color("#8ceb29"))
-	gauge.custom_minimum_size.y = 22
-
 	food_detail = _label(column, "", 36)
 	food_detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var tray := HBoxContainer.new()
@@ -170,7 +156,7 @@ func _build() -> void:
 		tile.tooltip_text = FOOD_NAMES.get(food, food)
 		tile.accessibility_name = tile.tooltip_text
 		tile.toggle_mode = true
-		tile.pressed.connect(_select.bind(food))
+		tile.pressed.connect(_tap_food.bind(food))
 		tile.gui_input.connect(_tile_input.bind(food))
 		tray.add_child(tile)
 		cards[food] = tile
@@ -187,12 +173,6 @@ func _build() -> void:
 		quantity.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		counts[food] = quantity
 
-	action = hud._button(column, "Alimentar", Color("#4a9018"))
-	action.custom_minimum_size.y = 109
-	action.add_theme_font_size_override("font_size", 43)
-	action.add_theme_stylebox_override("normal", _plate(Color("#539b18"), Color("#c8fe70"), 40, 15))
-	action.add_theme_stylebox_override("hover", _plate(Color("#65ad20"), Color("#e0ff9e"), 40, 15))
-	action.pressed.connect(_confirm)
 	message = _label(column, "", 30)
 	message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -244,7 +224,7 @@ func _navigation(parent: Control) -> void:
 				hotspot.pressed.connect(func() -> void:
 					shopping = not shopping
 					refresh()
-					message.text = "Loja · escolha um alimento para repor." if shopping else "Arraste o alimento até o Evolin."
+					message.text = "Loja · toque em um alimento para comprar por 5 moedas." if shopping else "Arraste o alimento até o Evolin."
 				)
 
 func open() -> void:
@@ -264,18 +244,11 @@ func close() -> void:
 
 func refresh() -> void:
 	profile.text = "Nível %d   ·   %d/50 XP" % [1 + care.xp / 50, care.xp % 50]
-	wallet.text = "%d moedas" % care.coins
+	wallet.text = str(care.coins)
 	for key: String in stats:
-		stats[key][0].text = "%s %d%%" % [key, roundi(care.needs[key])]
+		stats[key][0].text = "%d%%" % roundi(care.needs[key])
 		stats[key][1].value = care.needs[key]
-	var current := roundi(care.needs["Fome"])
-	var available: int = care.stock[selected]
-	var preview := mini(100, current + Care.FOODS[selected]) if available > 0 else current
-	hunger.text = "%d%%  →  %d%%" % [current, preview]
-	gauge.value = preview
-	food_detail.text = "%s  ·  +%d de fome" % [FOOD_NAMES.get(selected, selected), Care.FOODS[selected]]
-	action.text = "Comprar %s · 5 moedas" % FOOD_NAMES.get(selected, selected) if available == 0 or shopping else "Alimentar"
-	action.disabled = animating or care.rest_end > 0 or (not shopping and available > 0 and care.needs["Fome"] >= 99.0)
+	food_detail.text = "%s  ·  %s" % [FOOD_NAMES.get(selected, selected), "5 moedas" if shopping else "+%d de saciedade" % Care.FOODS[selected]]
 	for food: String in cards:
 		counts[food].text = "×%d" % care.stock[food]
 
@@ -291,8 +264,13 @@ func _select(food: String) -> void:
 		tile.set_pressed_no_signal(active)
 	refresh()
 
+func _tap_food(food: String) -> void:
+	_select(food)
+	if shopping:
+		message.text = _food_message(food, care.buy(food))
+
 func _tile_input(event: InputEvent, food: String) -> void:
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+	if not shopping and event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 		_select(food)
 		pointer_food = food
 		press_position = get_viewport().get_mouse_position()
@@ -325,17 +303,10 @@ func _cancel_drag() -> void:
 		ghost.queue_free()
 	ghost = null
 
-func _confirm() -> void:
-	if shopping:
-		message.text = _food_message(selected, care.buy(selected))
+func serve(food: String, at: Vector2) -> void:
+	if not visible or shopping or animating or not cards.has(food):
 		return
-	var tile: Button = cards[selected]
-	serve(selected, tile.get_global_rect().get_center(), true)
-
-func serve(food: String, at: Vector2, allow_purchase := false) -> void:
-	if not visible or animating or not cards.has(food):
-		return
-	if care.stock[food] == 0 and not allow_purchase:
+	if care.stock[food] == 0:
 		message.text = "Esse alimento acabou."
 		return
 	var before: int = care.stock[food]
@@ -450,12 +421,17 @@ func _rounded_tab(region: Rect2) -> ImageTexture:
 			image.set_pixel(x, y, color)
 	return ImageTexture.create_from_image(image)
 
-func _atlas(region: Rect2) -> AtlasTexture:
-	var texture := AtlasTexture.new()
-	texture.atlas = SHEET
-	texture.region = region
-	texture.filter_clip = true
-	return texture
+func _round_icon(region: Rect2) -> ImageTexture:
+	var image := SHEET.get_image().get_region(Rect2i(region))
+	image.convert(Image.FORMAT_RGBA8)
+	var dimensions := Vector2(image.get_size())
+	for y in image.get_height():
+		for x in image.get_width():
+			var uv := (Vector2(x, y) + Vector2(0.5, 0.5)) / dimensions
+			var color := image.get_pixel(x, y)
+			color.a = 1.0 - smoothstep(0.46, 0.50, uv.distance_to(Vector2(0.5, 0.5)))
+			image.set_pixel(x, y, color)
+	return ImageTexture.create_from_image(image)
 
 func _icon(parent: Node, texture: Texture2D, minimum: Vector2) -> TextureRect:
 	var icon := TextureRect.new()
