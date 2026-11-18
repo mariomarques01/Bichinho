@@ -8,6 +8,7 @@ const HUNGER_ICON := Rect2(791, 101, 49, 49)
 const FOOD_NAMES := {"Sanduíche": "Carne", "Biscoito": "Cupcake"}
 const IDLE := Rect2i(16, 13, 180, 187)
 const EATING := Rect2i(391, 13, 175, 185)
+const HAPPY := Rect2i(211, 13, 174, 182)
 const TITLE := Rect2i(782, 170, 247, 70)
 const FOOD_ART := {
 	"Maçã": Rect2(29, 428, 79, 65),
@@ -39,6 +40,7 @@ var animating := false
 var character: TextureRect
 var idle_pose: Texture2D
 var eating_pose: Texture2D
+var happy_pose: Texture2D
 
 func setup(owner_hud: CanvasLayer, manager: Care) -> void:
 	hud = owner_hud
@@ -48,6 +50,7 @@ func setup(owner_hud: CanvasLayer, manager: Care) -> void:
 		art[name] = _atlas(FOOD_ART[name])
 	idle_pose = _sprite(IDLE)
 	eating_pose = _sprite(EATING)
+	happy_pose = _sprite(HAPPY)
 	character = _icon(canvas, idle_pose, Vector2.ZERO)
 	character.z_index = -1
 	canvas.resized.connect(_frame_character)
@@ -299,7 +302,7 @@ func serve(food: String, at: Vector2, allow_purchase := false) -> void:
 	flight.tween_property(bite, "position", _mouth_position() - bite.size / 2, 0.25).set_ease(Tween.EASE_OUT)
 	flight.tween_callback(hud.food_eaten.emit)
 	flight.tween_callback(func() -> void:
-		character.texture = eating_pose
+		character.texture = eating_pose if food == "Maçã" else happy_pose
 		character.pivot_offset = character.size * Vector2(0.5, 1.0)
 	)
 	flight.parallel().tween_property(character, "scale", Vector2(1.04, 0.96), 0.13)
