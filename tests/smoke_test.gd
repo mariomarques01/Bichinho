@@ -42,11 +42,18 @@ func _run() -> void:
 	_expect(not room.night and hud.lamp_button.text == "Anoitecer", "Botão restaura o dia")
 	hud.jump_requested.emit()
 	await create_timer(0.27).timeout
+	_expect(evolin.face.material_overlay == evolin.eyelids, "Carinho fecha os olhos")
 	_expect(evolin.rig.position.y > 0.25, "Pulo eleva o personagem")
 	await create_timer(0.32).timeout
 	_expect(is_zero_approx(evolin.rig.position.y), "Pulo retorna ao tapete")
+	evolin.delight = 0.0
+	evolin.blink_elapsed = 3.86
+	evolin._update_eyelids(0.12)
+	_expect(evolin.face.material_overlay == evolin.eyelids, "Evolin pisca sozinho")
+	evolin._update_eyelids(0.13)
+	_expect(evolin.face.material_overlay == null, "Olhos reabrem após a piscada")
 	if failures == 0:
-		print("EVO: 9 verificações passaram.")
+		print("EVO: 12 verificações passaram.")
 	quit(1 if failures > 0 else 0)
 
 func _click(at: Vector2) -> void:

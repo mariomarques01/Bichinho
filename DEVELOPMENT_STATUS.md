@@ -2,7 +2,7 @@
 
 ## Etapa 1
 
-Projeto Godot 4.6.3 com GDScript, Compatibility, referência de 1080 × 1920, orientação retrato e limite configurado de 30 FPS. O quarto inclui piso de tábuas, tapete, cama, janela, estante, plantas e luminária. O Evolin usa o modelo GLB texturizado fornecido para o projeto, com texturas importadas internamente como Basis Universal. O modelo tem movimentos de respiração, balanço, pulo e reação corporal ao carinho. Piscar e mudar a expressão exigem um modelo com animação facial.
+Projeto Godot 4.6.3 com GDScript, Compatibility, referência de 1080 × 1920, orientação retrato e limite configurado de 30 FPS. O quarto inclui piso de tábuas, tapete, cama, janela, estante, plantas e luminária. O Evolin usa o modelo GLB texturizado fornecido para o projeto, com texturas importadas internamente como Basis Universal. O modelo tem movimentos de respiração, balanço, pulo e reação corporal ao carinho. O Evolin pisca e fecha os olhos ao receber carinho. O efeito usa um shader de pálpebras aplicado à malha importada durante a reação.
 
 A interface acompanha as reações do Evolin, mostra corações e oferece botões para carinho, pulo e ciclo dia/noite. O toque primário é convertido em eventos de mouse pela Godot. A posição é projetada pela câmera e testada contra a área de colisão do personagem. Há um intervalo mínimo entre carinhos para limitar a emissão dos efeitos.
 
@@ -21,12 +21,12 @@ A interface acompanha as reações do Evolin, mostra corações e oferece botõe
 
 - Importação por `godot --headless --editor --path . --import`.
 - Inicialização da cena principal por `godot --headless --path . --quit-after 50`.
-- Teste de integração por `godot --headless --path . --script res://tests/smoke_test.gd`. Nove verificações aprovadas, cobrindo acerto e erro de toque, arraste, ciclo de vida dos corações, intervalo mínimo, iluminação e pulo.
+- Teste de integração por `godot --headless --path . --script res://tests/smoke_test.gd`. Doze verificações aprovadas, cobrindo piscada, reação facial ao carinho, acerto e erro de toque, arraste, ciclo de vida dos corações, intervalo mínimo, iluminação e pulo.
 - Renderização Compatibility em Linux via Mesa llvmpipe. O driver virtual reporta uma advertência de VSync.
 
 - Exportação Web sem threads com os templates oficiais da Godot 4.6.3. O GitHub Pages serviu o HTML, JavaScript, WebAssembly e PCK com HTTP 200.
 - Renderização da página pública no Chromium em retrato com emulação de toque. O botão de iluminação alternou o ambiente e um toque no Evolin disparou a reação e mudou a mensagem da interface.
-- Download do ZIP publicado, extração em pasta limpa, importação e repetição das nove verificações headless.
+- Download do ZIP publicado, extração em pasta limpa, importação e repetição das verificações headless.
 
 ## Publicação
 
