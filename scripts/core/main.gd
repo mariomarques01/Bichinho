@@ -16,7 +16,6 @@ var was_sleeping := false
 var pointer_at := Vector2.ZERO
 var last_sample := Vector2.ZERO
 var sample_pending := false
-var drag_sample := false
 var ready_at := 0
 
 func _ready() -> void:
@@ -47,6 +46,8 @@ func _ready() -> void:
 
 func _activity_changed(index: int) -> void:
 	room.set_feeding(index == 0)
+	if index == 1:
+		room.camera.cull_mask = 0
 	sample_pending = false
 
 func _food_drop(food: String, at: Vector2) -> void:
@@ -63,17 +64,16 @@ func _refresh_rest() -> void:
 		was_sleeping = sleeping
 
 func _unhandled_input(event: InputEvent) -> void:
-	if hud.menu.mode == 0:
+	if hud.menu.mode in [0, 1]:
 		return
 	# Godot maps the primary Android touch to mouse events for both UI and the room.
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 		_sample(event.position)
 	elif event is InputEventMouseMotion and event.button_mask & MOUSE_BUTTON_MASK_LEFT:
 		if event.position.distance_squared_to(last_sample) >= 34.0 * 34.0:
-			_sample(event.position, true)
+			_sample(event.position)
 
-func _sample(at: Vector2, drag: bool = false) -> void:
-	drag_sample = drag
+func _sample(at: Vector2) -> void:
 	pointer_at = at
 	last_sample = at
 	sample_pending = true
@@ -89,13 +89,8 @@ func _physics_process(_delta: float) -> void:
 	ray.collide_with_bodies = false
 	ray.collide_with_areas = true
 	var hit := get_world_3d().direct_space_state.intersect_ray(ray)
-	if not hit.is_empty() and hud.menu.mode != 0:
-		if hud.menu.mode == 1:
-			if drag_sample and hud.menu.scrub():
-				sounds.play(&"bolha")
-				hud.bubble(pointer_at)
-		else:
-			_pet()
+	if not hit.is_empty():
+		_pet()
 
 func _pet() -> void:
 	var now := Time.get_ticks_msec()

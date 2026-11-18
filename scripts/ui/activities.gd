@@ -6,8 +6,6 @@ const COLORS := ["#a95320", "#22688e", "#644397", "#963c73", "#5054a0", "#267458
 var hud: CanvasLayer
 var care: Care
 var mode := -1
-var wash_strokes := 0
-var wash_meter: ProgressBar
 var rest_status: Label
 var wake_button: Button
 var rest_buttons: Array[Button] = []
@@ -20,29 +18,23 @@ var selection: Array[String] = []
 
 func enter(next: int) -> void:
 	mode = next
-	wash_strokes = 0
 	selection.clear()
 	cards.clear()
 	paint()
 
 func paint() -> void:
-	wash_meter = null
 	rest_status = null
 	wake_button = null
 	rest_buttons.clear()
 	for node in hud.activity.get_children():
 		hud.activity.remove_child(node)
 		node.queue_free()
-	hud.activity.visible = mode > 0
-	if mode <= 0:
+	hud.activity.visible = mode > 1
+	if mode <= 1:
 		return
 	var title: Label = hud._label(hud.activity, TITLES[mode], 39)
 	title.add_theme_color_override("font_color", Color("#ffe3bb"))
 	match mode:
-		1:
-			hud._label(hud.activity, "Deslize sobre o Evolin para ensaboar.", 30)
-			wash_meter = hud.meter(hud.activity, Color("#63dfff"))
-			wash_meter.value = wash_strokes * 10
 		2: _rest()
 		3:
 			hud._label(hud.activity, "Toque ou deslize sobre o Evolin.", 30)
@@ -86,16 +78,6 @@ func refresh() -> void:
 	for button in rest_buttons:
 		button.disabled = sleeping
 	wake_button.visible = sleeping
-
-func scrub() -> bool:
-	if mode != 1 or care.rest_end > 0 or wash_strokes >= 10:
-		return false
-	wash_strokes += 1
-	wash_meter.value = wash_strokes * 10
-	if wash_strokes == 10:
-		care.wash()
-		hud.show_reaction("Banho completo! Evolin está limpinho.")
-	return true
 
 func _memory() -> void:
 	hud._label(hud.activity, "Memória Mágica · encontre os pares.", 30)

@@ -14,6 +14,10 @@ O HUD mostra fome, higiene, energia, felicidade, XP, nível e moedas. Os seis me
 
 A tela usa um cenário ilustrado baseado no anexo e o Evolin em poses animadas do atlas fornecido. O quarto mantém o modelo 3D. A bandeja mostra os alimentos e as quantidades efetivas. A fome aparece no HUD superior e é atualizada ao arrastar e soltar um alimento sobre o Evolin. A área do personagem valida a entrega, e o alimento vai até a boca antes da reação de mastigar. As duas fileiras de navegação usam a arte fornecida. Quarto, Inventário e Loja atuam na tela; Evolução e Missões aguardam seus sistemas.
 
+## Tela Higienizar
+
+A tela usa a arte de referência fornecida para cenário, personagem, banheira e navegação. O HUD exibe dados do perfil. A esponja e o sabonete lavam o Evolin, o xampu gera bolhas extras e a toalha tira a espuma. Arraste um item sobre a banheira para progredir e atualizar a higiene. Evolução, Missões e compra de gemas permanecem sem ação nesta tela.
+
 ## Sons
 
 O EVO usa efeitos curtos e originais em WAV para menus, comida, mordida, carinho, bolhas, pulo, descanso e recompensas. Os efeitos acompanham as ações e usam volume moderado. No navegador, o áudio começa após a primeira interação.
@@ -33,7 +37,7 @@ O EVO usa efeitos curtos e originais em WAV para menus, comida, mordida, carinho
 
 - Importação por `godot --headless --editor --path . --import`.
 - Inicialização da cena principal por `godot --headless --path . --quit-after 50`.
-- Teste de integração por `godot --headless --path . --script res://tests/smoke_test.gd`. Vinte e seis verificações aprovadas, cobrindo piscada, reação facial ao carinho, acerto e erro de toque, arraste, ciclo de vida dos corações, intervalo mínimo, iluminação e pulo.
+- Teste de integração por `godot --headless --path . --script res://tests/smoke_test.gd`. Vinte e nove verificações aprovadas, cobrindo piscada, reação facial ao carinho, acerto e erro de toque, arraste, ciclo de vida dos corações, intervalo mínimo, iluminação e pulo.
 - Renderização Compatibility em Linux via Mesa llvmpipe. O driver virtual reporta uma advertência de VSync.
 
 - Exportação Web sem threads com os templates oficiais da Godot 4.6.3. O GitHub Pages serviu o HTML, JavaScript, WebAssembly e PCK com HTTP 200.

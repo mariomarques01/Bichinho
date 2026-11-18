@@ -67,7 +67,7 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 	if failures == 0:
-		print("EVO: 26 verificações passaram.")
+		print("EVO: 29 verificações passaram.")
 	quit(1 if failures > 0 else 0)
 
 func _test_care(game: Node3D, hud: CanvasLayer) -> void:
@@ -92,9 +92,16 @@ func _test_care(game: Node3D, hud: CanvasLayer) -> void:
 	_expect(care.stock["Maçã"] == 0, "Soltar alimento sobre o Evolin consome uma unidade")
 	hud.tabs[1].pressed.emit()
 	care.needs["Higiene"] = 40.0
+	_expect(hud.bath.visible and not hud.safe.visible, "Higienizar abre a tela ilustrada dedicada")
+	hud.bath.scrub(Vector2(20, 10))
+	_expect(hud.bath.progress == 0, "Movimentos fora da banheira não contam")
+	hud.bath._select(3)
+	hud.bath.scrub(Vector2(350, 500))
+	_expect(hud.bath.progress == 0 and care.needs["Higiene"] == 40.0, "Toalha não ensaboa")
+	hud.bath._select(0)
 	for stroke in 10:
-		hud.menu.scrub()
-	_expect(care.needs["Higiene"] == 72.0, "Banho recupera higiene após dez movimentos")
+		hud.bath.scrub(Vector2(350, 500))
+	_expect(care.needs["Higiene"] == 72.0 and hud.bath.readings[1].text == "72%", "Banho recupera higiene e atualiza o HUD após dez movimentos")
 	hud.tabs[2].pressed.emit()
 	hud.menu.rest_buttons[0].pressed.emit()
 	_expect(care.rest_end > care.now() and game.evolin.sleeping, "Descanso ativa o estado de sono")

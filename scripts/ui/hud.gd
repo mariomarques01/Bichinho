@@ -3,6 +3,7 @@ extends CanvasLayer
 const Activities = preload("res://scripts/ui/activities.gd")
 
 const Feeding = preload("res://scripts/ui/feeding.gd")
+const Bath = preload("res://scripts/ui/bath.gd")
 
 signal sound_requested(key: StringName)
 signal food_eaten
@@ -14,6 +15,7 @@ signal lamp_requested
 
 @onready var safe: MarginContainer = $Interface/SafeArea
 var feeding: Feeding
+var bath: Bath
 var feedback: Label
 var lamp_button: Button
 var feedback_time: Timer
@@ -33,6 +35,9 @@ func bind_care(care: Node) -> void:
 	feeding.setup(self, care)
 	_update_safe_area()
 	feeding.close()
+	bath = Bath.new()
+	$Interface.add_child(bath)
+	bath.setup(self, care)
 	care.changed.connect(_refresh)
 	_refresh()
 
@@ -44,6 +49,7 @@ func _refresh() -> void:
 		values[key].text = "%s  %d%%" % [key, roundi(care.needs[key])]
 	menu.refresh()
 	feeding.refresh()
+	bath.refresh()
 
 func play_sound(key: StringName) -> void:
 	sound_requested.emit(key)
@@ -52,12 +58,16 @@ func _open(index: int) -> void:
 	play_sound(&"toque")
 	var next := -1 if menu.mode == index else index
 	menu.enter(next)
-	activity_card.visible = next > 0
-	safe.visible = next != 0
+	activity_card.visible = next > 1
+	safe.visible = next != 0 and next != 1
 	if next == 0:
 		feeding.open()
 	else:
 		feeding.close()
+	if next == 1:
+		bath.open()
+	else:
+		bath.close()
 	activity_changed.emit(next)
 	for i in tabs.size():
 		tabs[i].set_pressed_no_signal(i == next)
