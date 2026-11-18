@@ -19,10 +19,34 @@ var chew := 0.0
 var face: MeshInstance3D
 var eyelids := ShaderMaterial.new()
 var blink_elapsed := 0.0
+var skeleton: Skeleton3D
+var tail_bone := -1
+var tail_rest := Quaternion.IDENTITY
+var tail_axis := Vector3.UP
 
 func _ready() -> void:
 	face = $Rig/Pose/Model.find_children("*", "MeshInstance3D", true, false)[0] as MeshInstance3D
 	eyelids.shader = EYELID_SHADER
+	var material := face.get_active_material(0).duplicate() as StandardMaterial3D
+	material.metallic = 0.0
+	material.roughness = 0.82
+	material.roughness_texture = null
+	material.normal_scale = 0.25
+	material.emission_enabled = true
+	material.emission_operator = BaseMaterial3D.EMISSION_OP_MULTIPLY
+	material.emission = Color.WHITE
+	material.emission_texture = material.albedo_texture
+	material.emission_energy_multiplier = 0.22
+	face.set_surface_override_material(0, material)
+	var bones := pose.find_children("*", "Skeleton3D", true, false)
+	if not bones.is_empty():
+		skeleton = bones[0] as Skeleton3D
+		for index in skeleton.get_bone_count():
+			if String(skeleton.get_bone_name(index)).ends_with("Tail_0"):
+				tail_bone = index
+				tail_rest = skeleton.get_bone_pose_rotation(index)
+				tail_axis = (skeleton.get_bone_global_rest(index).basis.inverse() * Vector3.UP).normalized()
+				break
 
 func _process(delta: float) -> void:
 	time += delta
@@ -30,6 +54,9 @@ func _process(delta: float) -> void:
 	var sway := sin(time * 2.2) * 0.026
 	var wiggle := sin(delight * 19.0) * sin(delight * PI / AFFECTION_DURATION) * 0.13
 	pose.rotation.z = sway + wiggle
+	if tail_bone >= 0:
+		var wag := 0.045 * sin(time * 2.8) if sleeping else 0.10 * sin(time * 3.6) + wiggle * 2.0
+		skeleton.set_bone_pose_rotation(tail_bone, tail_rest * Quaternion(tail_axis, wag))
 	chew = maxf(0.0, chew - delta)
 	pose.scale.y = 1.0 + sin(time * 2.2) * 0.022 - absf(sin(chew * 17.0)) * minf(chew, 0.08)
 

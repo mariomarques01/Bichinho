@@ -17,8 +17,7 @@ script = ExtResource("1")
 [node name="Pose" type="Node3D" parent="Rig"]
 
 [node name="Model" parent="Rig/Pose" instance=ExtResource("2")]
-position = Vector3(0.003, 1.2832, 0.004)
-scale = Vector3(1.35, 1.35, 1.35)
+scale = Vector3(2.56, 2.56, 2.56)
 
 [node name="TouchTarget" type="Area3D" parent="Rig"]
 collision_layer = 2

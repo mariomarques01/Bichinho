@@ -53,10 +53,13 @@ func _run() -> void:
 	_expect(evolin.face.material_overlay == evolin.eyelids, "Evolin pisca sozinho")
 	evolin._update_eyelids(0.13)
 	_expect(evolin.face.material_overlay == null, "Olhos reabrem após a piscada")
+	evolin.time = 0.4
+	evolin._process(0.0)
+	_expect(evolin.tail_bone >= 0 and not evolin.skeleton.get_bone_pose_rotation(evolin.tail_bone).is_equal_approx(evolin.tail_rest), "O osso da cauda reage à animação")
 	await _test_care(game, hud)
 	DirAccess.remove_absolute(game.care.save_path)
 	if failures == 0:
-		print("EVO: 20 verificações passaram.")
+		print("EVO: 21 verificações passaram.")
 	quit(1 if failures > 0 else 0)
 
 func _test_care(game: Node3D, hud: CanvasLayer) -> void:
