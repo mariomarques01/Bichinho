@@ -66,7 +66,7 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 	if failures == 0:
-		print("EVO: 29 verificações passaram.")
+		print("EVO: 30 verificações passaram.")
 	quit(1 if failures > 0 else 0)
 
 func _test_care(game: Node3D, hud: CanvasLayer) -> void:
@@ -74,6 +74,8 @@ func _test_care(game: Node3D, hud: CanvasLayer) -> void:
 	care.needs["Fome"] = 50.0
 	care.stock["Maçã"] = 2
 	hud.home.action_buttons[0].pressed.emit()
+	_expect(hud.home.action_buttons[0].choosing and hud.home.visible, "Toque anima o botão antes de abrir a atividade")
+	await hud.home.action_buttons[0].chosen
 	var drop: Vector2 = hud.feeding.character.get_global_rect().get_center()
 	hud.request_food_drop("Maçã", drop)
 	await process_frame
@@ -91,6 +93,7 @@ func _test_care(game: Node3D, hud: CanvasLayer) -> void:
 	_expect(care.stock["Maçã"] == 0, "Soltar alimento sobre o Evolin consome uma unidade")
 	hud._open(0)
 	hud.home.action_buttons[1].pressed.emit()
+	await hud.home.action_buttons[1].chosen
 	care.needs["Higiene"] = 40.0
 	_expect(hud.bath.visible and not hud.safe.visible, "Higienizar abre a tela ilustrada dedicada")
 	hud.bath.scrub(Vector2(20, 10))

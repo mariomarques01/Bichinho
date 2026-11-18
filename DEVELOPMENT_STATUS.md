@@ -12,7 +12,7 @@ O HUD mostra fome, higiene, energia, felicidade, XP, nível e moedas. Os seis me
 
 ## Tela inicial
 
-O quarto inicial usa o atlas fornecido para o cenário, o Evolin, o perfil e os atalhos. Nível, XP, moedas e necessidades vêm do perfil ativo. Tocar no Evolin aciona carinho, e tocar na luminária alterna dia e noite. O modelo 3D permanece disponível nas atividades que usam o quarto anterior.
+O quarto inicial usa o atlas fornecido para o cenário, o Evolin, o perfil e os atalhos. Nível, XP, moedas e necessidades vêm do perfil ativo. Tocar no Evolin aciona carinho, e tocar na luminária alterna dia e noite. Os ícones dos seis botões são desenhados pela Godot e os rótulos usam texto nativo. Ao segurar e soltar, o botão encolhe e ressalta antes de abrir a atividade. O modelo 3D permanece disponível nas atividades que usam o quarto anterior.
 
 ## Tela Alimentar
 
@@ -41,7 +41,7 @@ O EVO usa efeitos curtos e originais em WAV para menus, comida, mordida, carinho
 
 - Importação por `godot --headless --editor --path . --import`.
 - Inicialização da cena principal por `godot --headless --path . --quit-after 50`.
-- Teste de integração por `godot --headless --path . --script res://tests/smoke_test.gd`. Vinte e nove verificações aprovadas, cobrindo piscada, reação facial ao carinho, acerto e erro de toque, arraste, ciclo de vida dos corações, intervalo mínimo, iluminação e pulo.
+- Teste de integração por `godot --headless --path . --script res://tests/smoke_test.gd`. Trinta verificações aprovadas, cobrindo piscada, reação facial ao carinho, acerto e erro de toque, arraste, ciclo de vida dos corações, intervalo mínimo, iluminação e pulo.
 - Renderização Compatibility em Linux via Mesa llvmpipe. O driver virtual reporta uma advertência de VSync.
 
 - Exportação Web sem threads com os templates oficiais da Godot 4.6.3. O GitHub Pages serviu o HTML, JavaScript, WebAssembly e PCK com HTTP 200.

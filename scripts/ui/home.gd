@@ -1,5 +1,7 @@
 extends Control
 
+const Action = preload("res://scripts/ui/home_action.gd")
+const SHARPEN = preload("res://scripts/ui/home_sharpen.gdshader")
 const Care = preload("res://scripts/needs/care.gd")
 const SHEET = preload("res://assets/textures/home/atlas.jpg")
 const DESIGN := Vector2(720, 1280)
@@ -13,10 +15,6 @@ const STAT_KEYS := ["Fome", "Higiene", "Energia", "Felicidade"]
 const STAT_RECTS := [
 	Rect2(605, 246, 136, 73), Rect2(742, 246, 135, 73),
 	Rect2(878, 246, 135, 73), Rect2(1015, 246, 140, 73),
-]
-const ACTIONS := [
-	Rect2i(613, 386, 178, 83), Rect2i(793, 386, 175, 83), Rect2i(969, 386, 183, 83),
-	Rect2i(612, 478, 179, 86), Rect2i(792, 478, 180, 86), Rect2i(970, 478, 182, 86),
 ]
 const ACTION_NAMES := ["Alimentar", "Higienizar", "Descansar", "Carinho", "Brincar", "Experimentar"]
 
@@ -32,7 +30,8 @@ var xp_reading: Label
 var coins: Label
 var stat_readings: Array[Label] = []
 var stat_bars: Array[ProgressBar] = []
-var action_buttons: Array[TextureButton] = []
+var action_buttons: Array[Action] = []
+var sharpen := ShaderMaterial.new()
 var reaction: Tween
 
 func setup(owner_hud: CanvasLayer, profile: Care) -> void:
@@ -41,6 +40,7 @@ func setup(owner_hud: CanvasLayer, profile: Care) -> void:
 	size = DESIGN
 	mouse_filter = MOUSE_FILTER_IGNORE
 	theme = hud.safe.theme
+	sharpen.shader = SHARPEN
 	_build_room()
 	_build_profile()
 	_build_navigation()
@@ -81,8 +81,9 @@ func _build_room() -> void:
 	_hit("Luminária", Rect2(618, 399, 94, 240)).pressed.connect(_lamp)
 
 func _build_profile() -> void:
-	_picture(_atlas(PROFILE), Rect2(16, 21, 455, 123))
-	_picture(_atlas(WALLET), Rect2(484, 47, 218, 74))
+	_sharp_picture(_atlas(PROFILE), Rect2(16, 21, 455, 123))
+	_sharp_picture(_atlas(WALLET), Rect2(484, 47, 218, 74))
+	_value(Rect2(142, 35, 151, 33), 28, HORIZONTAL_ALIGNMENT_LEFT).text = "Meu EVO"
 	level = _value(Rect2(143, 69, 130, 32), 23, HORIZONTAL_ALIGNMENT_LEFT)
 	xp_reading = _value(Rect2(309, 69, 139, 30), 22)
 	xp_bar = _meter(Rect2(144, 101, 298, 22), Color("#ee38e7"), Color("#583575"))
@@ -90,27 +91,25 @@ func _build_profile() -> void:
 	_hit("Loja de alimentos", Rect2(638, 48, 61, 71)).pressed.connect(_open_store)
 	for index in STAT_RECTS.size():
 		var x := 18.0 + index * 172.0
-		_picture(_atlas(STAT_RECTS[index]), Rect2(x, 151, 167, 90))
-		stat_readings.append(_value(Rect2(x + 76, 185, 78, 23), 20))
+		_sharp_picture(_atlas(STAT_RECTS[index]), Rect2(x, 151, 167, 90))
+		_value(Rect2(x + 63, 160, 99, 25), 17).text = STAT_KEYS[index]
+		stat_readings.append(_value(Rect2(x + 76, 185, 78, 23), 21))
 		stat_bars.append(_meter(Rect2(x + 67, 209, 92, 19),
 			Color("#77aaff") if index == 2 else Color("#9be92c"), Color("#3a2859")))
 
 func _build_navigation() -> void:
-	for index in ACTIONS.size():
+	for index in ACTION_NAMES.size():
 		var x := 18.0 + (index % 3) * 230.0
 		var y := 939.0 + int(index / 3) * 96.0
-		var button := TextureButton.new()
-		button.texture_normal = _interface_art(ACTIONS[index], false)
-		button.ignore_texture_size = true
-		button.stretch_mode = TextureButton.STRETCH_SCALE
-		button.accessibility_name = ACTION_NAMES[index]
+		var button := Action.new()
 		add_child(button)
 		button.position = Vector2(x, y)
 		button.size = Vector2(224, 96)
-		button.pressed.connect(hud._open.bind(index))
+		button.setup(ACTION_NAMES[index], index)
+		button.chosen.connect(hud._open.bind(index))
 		action_buttons.append(button)
 
-	_picture(_interface_art(NAV, true), Rect2(17, 1144, 686, 123))
+	_sharp_picture(_navigation_art(NAV), Rect2(17, 1144, 686, 123))
 	_hit("Inventário", Rect2(156, 1160, 128, 92)).pressed.connect(func() -> void: hud._open(0))
 	_hit("Quarto", Rect2(288, 1146, 144, 113)).pressed.connect(func() -> void: hud.play_sound(&"toque"))
 	_hit("Loja", Rect2(560, 1161, 143, 90)).pressed.connect(_open_store)
@@ -176,9 +175,15 @@ func _picture(art: Texture2D, rect: Rect2) -> TextureRect:
 	node.size = rect.size
 	return node
 
+func _sharp_picture(art: Texture2D, rect: Rect2) -> TextureRect:
+	var picture := _picture(art, rect)
+	picture.material = sharpen
+	return picture
+
 func _hit(caption: String, rect: Rect2) -> Button:
 	var button := Button.new()
 	button.flat = true
+	button.add_theme_stylebox_override("pressed", _style(Color("#f6d1ff49"), 24))
 	button.accessibility_name = caption
 	add_child(button)
 	button.position = rect.position
@@ -220,23 +225,16 @@ func _style(color: Color, radius: int) -> StyleBoxFlat:
 	plate.set_corner_radius_all(radius)
 	return plate
 
-func _interface_art(region: Rect2i, navigation: bool) -> ImageTexture:
+func _navigation_art(region: Rect2i) -> ImageTexture:
 	var image := SHEET.get_image().get_region(region)
 	image.convert(Image.FORMAT_RGBA8)
 	var size_px := Vector2(region.size)
 	for y in region.size.y:
 		for x in region.size.x:
 			var uv := (Vector2(x, y) + Vector2(0.5, 0.5)) / size_px
-			var mask := 0.0
-			if navigation:
-				# Keep the center Quarto medallion as well as the long rounded tray.
-				var center := (uv - Vector2(0.50, 0.50)) / Vector2(0.105, 0.52)
-				var tray := ((uv - Vector2(0.50, 0.55)).abs() - Vector2(0.421, 0.29)).max(Vector2.ZERO).length()
-				mask = maxf(1.0 - smoothstep(0.065, 0.079, tray), 1.0 - smoothstep(0.95, 1.0, center.length()))
-			else:
-				var edge := ((uv - Vector2(0.5, 0.5)).abs() - Vector2(0.357, 0.12)).max(Vector2.ZERO)
-				var rounded := edge / Vector2(0.14, 0.39)
-				mask = 1.0 - smoothstep(0.95, 1.03, rounded.length())
+			var center := (uv - Vector2(0.50, 0.50)) / Vector2(0.105, 0.52)
+			var tray := ((uv - Vector2(0.50, 0.55)).abs() - Vector2(0.421, 0.29)).max(Vector2.ZERO).length()
+			var mask := maxf(1.0 - smoothstep(0.065, 0.079, tray), 1.0 - smoothstep(0.95, 1.0, center.length()))
 			var color := image.get_pixel(x, y)
 			color.a = mask
 			image.set_pixel(x, y, color)
