@@ -52,4 +52,4 @@ func _pet() -> void:
 		return
 	ready_at = now + 410
 	evolin.pet()
-	hud.heart(room.camera.unproject_position(evolin.global_position + Vector3(0.56, 2.30, 0.25)))
+	hud.heart(room.camera.unproject_position(evolin.heart_origin.global_position))

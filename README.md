@@ -15,7 +15,7 @@ O projeto roda localmente, sem plugins ou serviços externos. No navegador, é n
 ## Estrutura
 
 - `scenes/main` reúne a cena de entrada e o quarto.
-- `scenes/pet` contém o Evolin reutilizável, modelado e animado por `scripts/pet`.
+- `scenes/pet` contém a cena reutilizável do Evolin. O modelo GLB texturizado fica em `assets/models` e as animações ficam em `scripts/pet`.
 - `scenes/ui` e `scripts/ui` contêm a interface nativa.
 - `scripts/core` contém a construção do quarto, a geometria compartilhada e a integração de entrada.
 - `tests` contém o teste de integração. `docs` reúne o plano técnico.

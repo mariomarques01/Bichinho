@@ -2,7 +2,7 @@
 
 ## Etapa 1
 
-Projeto Godot 4.6.3 com GDScript, Compatibility, referência de 1080 × 1920, orientação retrato e limite configurado de 30 FPS. O quarto inclui piso de tábuas, tapete, cama, janela, estante, plantas e luminária. O Evolin é uma cena própria com corpo, cabeça, olhos, manchas, orelhas, patas, antenas luminosas e cauda. Piscar, respirar, balançar, pular e reagir ao carinho já funcionam.
+Projeto Godot 4.6.3 com GDScript, Compatibility, referência de 1080 × 1920, orientação retrato e limite configurado de 30 FPS. O quarto inclui piso de tábuas, tapete, cama, janela, estante, plantas e luminária. O Evolin usa o modelo GLB texturizado fornecido para o projeto, com texturas importadas internamente como Basis Universal. O modelo tem movimentos de respiração, balanço, pulo e reação corporal ao carinho. Piscar e mudar a expressão exigem um modelo com animação facial.
 
 A interface acompanha as reações do Evolin, mostra corações e oferece botões para carinho, pulo e ciclo dia/noite. O toque primário é convertido em eventos de mouse pela Godot. A posição é projetada pela câmera e testada contra a área de colisão do personagem. Há um intervalo mínimo entre carinhos para limitar a emissão dos efeitos.
 
@@ -25,7 +25,7 @@ A interface acompanha as reações do Evolin, mostra corações e oferece botõe
 - Renderização Compatibility em Linux via Mesa llvmpipe. O driver virtual reporta uma advertência de VSync.
 
 - Exportação Web sem threads com os templates oficiais da Godot 4.6.3. O GitHub Pages serviu o HTML, JavaScript, WebAssembly e PCK com HTTP 200.
-- Renderização da página pública no Chromium em retrato com emulação de toque. O botão de iluminação alternou o ambiente e um toque no Evolin mudou a expressão e a mensagem da interface.
+- Renderização da página pública no Chromium em retrato com emulação de toque. O botão de iluminação alternou o ambiente e um toque no Evolin disparou a reação e mudou a mensagem da interface.
 - Download do ZIP publicado, extração em pasta limpa, importação e repetição das nove verificações headless.
 
 ## Publicação
