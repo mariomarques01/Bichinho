@@ -24,6 +24,7 @@ func _ready() -> void:
 	hud.sound_requested.connect(sounds.play)
 	hud.bind_care(care)
 	hud.activity_changed.connect(_activity_changed)
+	_activity_changed(-1)
 	hud.food_drop.connect(_food_drop)
 	care.changed.connect(_refresh_rest)
 	_refresh_rest()
@@ -46,7 +47,7 @@ func _ready() -> void:
 
 func _activity_changed(index: int) -> void:
 	room.set_feeding(index == 0)
-	if index == 1:
+	if index in [-1, 1]:
 		room.camera.cull_mask = 0
 	sample_pending = false
 
@@ -82,6 +83,10 @@ func _physics_process(_delta: float) -> void:
 	if not sample_pending:
 		return
 	sample_pending = false
+	if hud.menu.mode == -1:
+		if hud.home.hit_pet(pointer_at):
+			_pet()
+		return
 	var camera: Camera3D = room.camera
 	var origin := camera.project_ray_origin(pointer_at)
 	var end := origin + camera.project_ray_normal(pointer_at) * 20.0
@@ -100,4 +105,8 @@ func _pet() -> void:
 	sounds.play(&"carinho")
 	care.affection()
 	evolin.pet()
-	hud.heart(room.camera.unproject_position(evolin.heart_origin.global_position))
+	if hud.menu.mode == -1:
+		hud.home.react()
+		hud.heart(hud.home.heart_point())
+	else:
+		hud.heart(room.camera.unproject_position(evolin.heart_origin.global_position))

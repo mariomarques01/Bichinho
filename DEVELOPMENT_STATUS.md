@@ -10,6 +10,10 @@ A interface acompanha as reações do Evolin, mostra corações e oferece botõe
 
 O HUD mostra fome, higiene, energia, felicidade, XP, nível e moedas. Os seis menus permitem alimentar com cinco itens, tomar banho por arraste, descansar por 30, 60 ou 180 minutos, ganhar felicidade com carinho, jogar Memória Mágica com três pares e descobrir três receitas. As ações gravam um perfil local. O descanso recupera energia com base no tempo decorrido, inclusive com o jogo fechado.
 
+## Tela inicial
+
+O quarto inicial usa o atlas fornecido para o cenário, o Evolin, o perfil e os atalhos. Nível, XP, moedas e necessidades vêm do perfil ativo. Tocar no Evolin aciona carinho, e tocar na luminária alterna dia e noite. O modelo 3D permanece disponível nas atividades que usam o quarto anterior.
+
 ## Tela Alimentar
 
 A tela usa um cenário ilustrado baseado no anexo e o Evolin em poses animadas do atlas fornecido. O quarto mantém o modelo 3D. A bandeja mostra os alimentos e as quantidades efetivas. A fome aparece no HUD superior e é atualizada ao arrastar e soltar um alimento sobre o Evolin. A área do personagem valida a entrega, e o alimento vai até a boca antes da reação de mastigar. As duas fileiras de navegação usam a arte fornecida. Quarto, Inventário e Loja atuam na tela; Evolução e Missões aguardam seus sistemas.

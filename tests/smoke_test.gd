@@ -16,24 +16,23 @@ func _run() -> void:
 	var evolin: Node3D = game.get_node("Evolin")
 	var room: Node3D = game.get_node("Room")
 	var hud: CanvasLayer = game.get_node("HUD")
-	var camera: Camera3D = room.get_node("Camera")
-	var head := evolin.global_position + Vector3(0, 1.42, 0.2)
+	var head: Vector2 = hud.home.pet_point()
 	_click(Vector2(4, 4))
 	await physics_frame
 	await process_frame
 	_expect(hud.feedback.text.begins_with("Toque"), "Toque fora do Evolin preserva a instrução")
-	_click(camera.unproject_position(head))
+	_click(head)
 	await physics_frame
 	await process_frame
 	_expect(hud.feedback.text.contains("carinho"), "Toque acerta o Evolin e atualiza a interface")
 	_expect(_hearts(hud) == 1, "Toque cria um coração")
-	_click(camera.unproject_position(head))
+	_click(head)
 	await physics_frame
 	await process_frame
 	_expect(_hearts(hud) == 1, "Intervalo mínimo limita os efeitos de toques repetidos")
 	await create_timer(0.64).timeout
 	_expect(_hearts(hud) == 0, "Coração é removido após a animação")
-	_drag(camera.unproject_position(head) + Vector2(55, 0))
+	_drag(head + Vector2(55, 0))
 	await physics_frame
 	await process_frame
 	_expect(_hearts(hud) == 1, "Arraste sobre o Evolin dispara carinho")
@@ -74,7 +73,7 @@ func _test_care(game: Node3D, hud: CanvasLayer) -> void:
 	var care = game.care
 	care.needs["Fome"] = 50.0
 	care.stock["Maçã"] = 2
-	hud.tabs[0].pressed.emit()
+	hud.home.action_buttons[0].pressed.emit()
 	var drop: Vector2 = hud.feeding.character.get_global_rect().get_center()
 	hud.request_food_drop("Maçã", drop)
 	await process_frame
@@ -90,7 +89,8 @@ func _test_care(game: Node3D, hud: CanvasLayer) -> void:
 	await physics_frame
 	await process_frame
 	_expect(care.stock["Maçã"] == 0, "Soltar alimento sobre o Evolin consome uma unidade")
-	hud.tabs[1].pressed.emit()
+	hud._open(0)
+	hud.home.action_buttons[1].pressed.emit()
 	care.needs["Higiene"] = 40.0
 	_expect(hud.bath.visible and not hud.safe.visible, "Higienizar abre a tela ilustrada dedicada")
 	hud.bath.scrub(Vector2(20, 10))

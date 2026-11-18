@@ -4,6 +4,7 @@ const Activities = preload("res://scripts/ui/activities.gd")
 
 const Feeding = preload("res://scripts/ui/feeding.gd")
 const Bath = preload("res://scripts/ui/bath.gd")
+const Home = preload("res://scripts/ui/home.gd")
 
 signal sound_requested(key: StringName)
 signal food_eaten
@@ -16,6 +17,7 @@ signal lamp_requested
 @onready var safe: MarginContainer = $Interface/SafeArea
 var feeding: Feeding
 var bath: Bath
+var home: Home
 var feedback: Label
 var lamp_button: Button
 var feedback_time: Timer
@@ -38,6 +40,10 @@ func bind_care(care: Node) -> void:
 	bath = Bath.new()
 	$Interface.add_child(bath)
 	bath.setup(self, care)
+	home = Home.new()
+	$Interface.add_child(home)
+	home.setup(self, care)
+	safe.hide()
 	care.changed.connect(_refresh)
 	_refresh()
 
@@ -50,6 +56,7 @@ func _refresh() -> void:
 	menu.refresh()
 	feeding.refresh()
 	bath.refresh()
+	home.refresh()
 
 func play_sound(key: StringName) -> void:
 	sound_requested.emit(key)
@@ -59,7 +66,8 @@ func _open(index: int) -> void:
 	var next := -1 if menu.mode == index else index
 	menu.enter(next)
 	activity_card.visible = next > 1
-	safe.visible = next != 0 and next != 1
+	safe.visible = next >= 2
+	home.visible = next == -1
 	if next == 0:
 		feeding.open()
 	else:
@@ -176,6 +184,7 @@ func show_reaction(message: String) -> void:
 	feedback_time.start(2.0)
 
 func set_night(night: bool) -> void:
+	home.set_night(night)
 	lamp_button.text = "Amanhecer" if night else "Anoitecer"
 
 func heart(at: Vector2) -> void:
