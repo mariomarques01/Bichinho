@@ -46,6 +46,7 @@ var ghost: TextureRect
 var animating := false
 var shopping := false
 var character: TextureRect
+var contact_shadow: TextureRect
 var idle_pose: Texture2D
 var eating_pose: Texture2D
 var happy_pose: Texture2D
@@ -55,10 +56,21 @@ func setup(owner_hud: CanvasLayer, manager: Care) -> void:
 	care = manager
 	canvas = get_parent()
 	for name in FOOD_ART:
-		art[name] = _atlas(FOOD_ART[name])
+		art[name] = _sprite(Rect2i(FOOD_ART[name]), true)
 	idle_pose = _sprite(IDLE)
 	eating_pose = _sprite(EATING)
 	happy_pose = _sprite(HAPPY)
+	var gradient := Gradient.new()
+	gradient.offsets = PackedFloat32Array([0.0, 0.45, 1.0])
+	gradient.colors = PackedColorArray([Color("#34113470"), Color("#3411343a"), Color("#34113400")])
+	var shadow_texture := GradientTexture2D.new()
+	shadow_texture.gradient = gradient
+	shadow_texture.fill = GradientTexture2D.FILL_RADIAL
+	shadow_texture.fill_from = Vector2(0.5, 0.5)
+	shadow_texture.fill_to = Vector2(1.0, 0.5)
+	contact_shadow = _icon(canvas, shadow_texture, Vector2.ZERO)
+	contact_shadow.stretch_mode = TextureRect.STRETCH_SCALE
+	contact_shadow.z_index = -2
 	character = _icon(canvas, idle_pose, Vector2.ZERO)
 	character.z_index = -1
 	canvas.resized.connect(_frame_character)
@@ -238,6 +250,7 @@ func _navigation(parent: Control) -> void:
 func open() -> void:
 	show()
 	shopping = false
+	contact_shadow.show()
 	character.show()
 	_frame_character()
 	_select(selected)
@@ -245,6 +258,7 @@ func open() -> void:
 
 func close() -> void:
 	hide()
+	contact_shadow.hide()
 	character.hide()
 	_cancel_drag()
 
@@ -363,6 +377,8 @@ func _frame_character() -> void:
 	var height := minf(stage.x * 0.63, stage.y * 0.34)
 	character.size = Vector2(height * 0.96, height)
 	character.position = Vector2(stage.x * 0.46 - character.size.x * 0.5, stage.y * 0.60 - height)
+	contact_shadow.size = character.size * Vector2(0.89, 0.17)
+	contact_shadow.position = character.position + character.size * Vector2(0.12, 0.88)
 
 func _mouth_position() -> Vector2:
 	return character.position + character.size * Vector2(0.69, 0.58)
@@ -372,7 +388,7 @@ func accepts_drop(at: Vector2) -> bool:
 	var body := (normalized - Vector2(0.56, 0.54)) / Vector2(0.43, 0.46)
 	return body.length_squared() <= 1.0
 
-func _sprite(region: Rect2i) -> ImageTexture:
+func _sprite(region: Rect2i, food_cutout := false) -> ImageTexture:
 	var image := SHEET.get_image().get_region(region)
 	image.convert(Image.FORMAT_RGBA8)
 	# Clear only the pale backdrop connected to the square's perimeter.
@@ -391,12 +407,35 @@ func _sprite(region: Rect2i) -> ImageTexture:
 		if not bounds.has_point(pixel):
 			continue
 		var color := image.get_pixelv(pixel)
-		if color.a == 0 or minf(color.r, minf(color.g, color.b)) < 0.86:
+		var low := minf(color.r, minf(color.g, color.b))
+		var high := maxf(color.r, maxf(color.g, color.b))
+		var backdrop_pixel := high - low < 0.24 if food_cutout else low >= 0.86
+		if color.a == 0 or not backdrop_pixel:
 			continue
 		image.set_pixelv(pixel, Color.TRANSPARENT)
 		for direction in [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]:
 			queue.append(pixel + direction)
+	_soften_cutout(image, food_cutout)
 	return ImageTexture.create_from_image(image)
+
+func _soften_cutout(image: Image, food_cutout: bool) -> void:
+	var mask := image.duplicate() as Image
+	for y in range(1, image.get_height() - 1):
+		for x in range(1, image.get_width() - 1):
+			var color := mask.get_pixel(x, y)
+			if color.a == 0.0:
+				continue
+			var neighbors := 0
+			for offset in [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]:
+				if mask.get_pixelv(Vector2i(x, y) + offset).a == 0.0:
+					neighbors += 1
+			if neighbors == 0:
+				continue
+			var lightness := minf(color.r, minf(color.g, color.b))
+			color.a = 1.0 - neighbors * 0.13
+			if not food_cutout and lightness > 0.66:
+				color.a *= 1.0 - smoothstep(0.66, 0.88, lightness) * 0.72
+			image.set_pixel(x, y, color)
 
 func _rounded_tab(region: Rect2) -> ImageTexture:
 	var image := REFERENCE.get_image().get_region(Rect2i(region))
