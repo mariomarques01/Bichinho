@@ -73,7 +73,7 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 	if failures == 0:
-		print("EVO: 40 verificações passaram.")
+		print("EVO: 43 verificações passaram.")
 	quit(1 if failures > 0 else 0)
 
 func _test_care(game: Node3D, hud: CanvasLayer) -> void:
@@ -121,10 +121,15 @@ func _test_care(game: Node3D, hud: CanvasLayer) -> void:
 	_expect(care.needs["Higiene"] == 72.0 and hud.bath.readings[1].text == "72%", "Banho recupera higiene e atualiza o HUD após dez movimentos")
 	_expect(float(hud.bath.movement.get_shader_parameter("response")) > 0.0, "Ensaboar faz o Evolin se mexer na banheira")
 	hud.tabs[2].pressed.emit()
-	hud.menu.rest_buttons[0].pressed.emit()
+	_expect(hud.rest.visible and not hud.safe.visible, "Descansar abre o quarto noturno ilustrado")
+	hud.rest._choose_item(4)
+	_expect(hud.rest.prop.visible and hud.rest.selected == 4, "Escolher um acessório exibe o item à beira da cama")
+	hud.rest._toggle_duration()
+	_expect(hud.rest.panel.visible, "Tocar na cama abre as durações")
+	hud.rest.duration_buttons[0].pressed.emit()
 	_expect(care.rest_end > care.now() and game.evolin.sleeping, "Descanso ativa o estado de sono")
 	await create_timer(0.32).timeout
-	_expect(game.evolin.rest_weight > 0.5 and game.evolin.pose.scale.y < 0.9, "Evolin se encolhe para dormir")
+	_expect(float(hud.rest.motion.get_shader_parameter("sleeping")) > 0.4, "Evolin se encolhe para dormir")
 	care.needs["Energia"] = 40.0
 	care.advance(care.rest_end)
 	_expect(care.needs["Energia"] > 60.0 and not game.evolin.sleeping, "Descanso recupera energia e termina")

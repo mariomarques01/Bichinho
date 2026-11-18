@@ -64,7 +64,7 @@ func _ready() -> void:
 func _activity_changed(index: int) -> void:
 	evolin.set_activity(index)
 	room.set_feeding(index == 0)
-	if index in [-1, 1]:
+	if index in [-1, 1, 2]:
 		room.camera.cull_mask = 0
 	sample_pending = false
 
@@ -84,17 +84,16 @@ func _refresh_rest() -> void:
 		was_sleeping = sleeping
 
 func _process(delta: float) -> void:
-	if not evolin.sleeping or hud.menu.mode not in [-1, 2]:
+	if not evolin.sleeping or hud.menu.mode != -1:
 		return
 	next_dream -= delta
 	if next_dream > 0.0:
 		return
 	next_dream = 1.26
-	var at := hud.home.heart_point() if hud.menu.mode == -1 else room.camera.unproject_position(evolin.heart_origin.global_position - Vector3(0, 0.35, 0))
-	hud.dream(at)
+	hud.dream(hud.home.heart_point())
 
 func _unhandled_input(event: InputEvent) -> void:
-	if hud.menu.mode in [0, 1]:
+	if hud.menu.mode in [0, 1, 2]:
 		return
 	# Godot maps the primary Android touch to mouse events for both UI and the room.
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:

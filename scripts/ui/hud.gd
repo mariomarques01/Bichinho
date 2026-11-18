@@ -4,6 +4,7 @@ const Activities = preload("res://scripts/ui/activities.gd")
 
 const Feeding = preload("res://scripts/ui/feeding.gd")
 const Bath = preload("res://scripts/ui/bath.gd")
+const Rest = preload("res://scripts/ui/rest.gd")
 const Home = preload("res://scripts/ui/home.gd")
 
 signal sound_requested(key: StringName)
@@ -20,6 +21,7 @@ signal lamp_requested
 @onready var safe: MarginContainer = $Interface/SafeArea
 var feeding: Feeding
 var bath: Bath
+var rest: Rest
 var home: Home
 var feedback: Label
 var lamp_button: Button
@@ -43,6 +45,9 @@ func bind_care(care: Node) -> void:
 	bath = Bath.new()
 	$Interface.add_child(bath)
 	bath.setup(self, care)
+	rest = Rest.new()
+	$Interface.add_child(rest)
+	rest.setup(self, care)
 	home = Home.new()
 	$Interface.add_child(home)
 	home.setup(self, care)
@@ -56,9 +61,9 @@ func _refresh() -> void:
 	for key: String in bars:
 		bars[key].value = care.needs[key]
 		values[key].text = "%s  %d%%" % [key, roundi(care.needs[key])]
-	menu.refresh()
 	feeding.refresh()
 	bath.refresh()
+	rest.refresh()
 	home.refresh()
 
 func play_sound(key: StringName) -> void:
@@ -68,8 +73,8 @@ func _open(index: int) -> void:
 	play_sound(&"toque")
 	var next := -1 if menu.mode == index else index
 	menu.enter(next)
-	activity_card.visible = next > 1
-	safe.visible = next >= 2
+	activity_card.visible = next > 2
+	safe.visible = next >= 3
 	home.visible = next == -1
 	if next == 0:
 		feeding.open()
@@ -79,6 +84,10 @@ func _open(index: int) -> void:
 		bath.open()
 	else:
 		bath.close()
+	if next == 2:
+		rest.open()
+	else:
+		rest.close()
 	activity_changed.emit(next)
 	for i in tabs.size():
 		tabs[i].set_pressed_no_signal(i == next)
