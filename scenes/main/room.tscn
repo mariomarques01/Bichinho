@@ -15,7 +15,7 @@ script = ExtResource("1")
 environment = SubResource("RoomEnvironment")
 
 [node name="Camera" type="Camera3D" parent="."]
-position = Vector3(0, 3.42, 7.2)
+position = Vector3(0, 4.64, 12.12)
 projection = 1
 size = 6.8
 current = true

@@ -47,7 +47,7 @@ func _build_room() -> void:
 	var floors: Array[StandardMaterial3D] = []
 	for color: String in ["#bf886e", "#d89974", "#c78b66", "#d49b78"]:
 		floors.append(Geo.material(Color(color)))
-	for row in range(25):
+	for row in range(31):
 		for column in range(4):
 			var x := (column - 1.5) * 3.15 + (0.56 if row % 2 == 0 else -0.56)
 			Geo.box(self, Vector3(x, -0.073, -3.36 + row * 0.46),

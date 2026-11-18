@@ -25,6 +25,7 @@ A interface acompanha as reações do Evolin, mostra corações e oferece botõe
 - Renderização Compatibility em Linux via Mesa llvmpipe. O driver virtual reporta uma advertência de VSync.
 
 - Exportação Web sem threads com os templates oficiais da Godot 4.6.3. O GitHub Pages serviu o HTML, JavaScript, WebAssembly e PCK com HTTP 200.
+- Renderização da página pública no Chromium em retrato com emulação de toque. O botão de iluminação alternou o ambiente e um toque no Evolin mudou a expressão e a mensagem da interface.
 - Download do ZIP publicado, extração em pasta limpa, importação e repetição das nove verificações headless.
 
 ## Publicação
