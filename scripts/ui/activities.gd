@@ -67,10 +67,14 @@ func _rest() -> void:
 		rest_buttons.append(button)
 		button.pressed.connect(func() -> void:
 			if care.rest(minutes):
+				hud.play_sound(&"descanso")
 				hud.show_reaction("Boa noite, Evolin!")
 		)
 	wake_button = hud._button(hud.activity, "Acordar", Color(COLORS[2]))
-	wake_button.pressed.connect(care.wake)
+	wake_button.pressed.connect(func() -> void:
+		hud.play_sound(&"toque")
+		care.wake()
+	)
 	refresh()
 
 func refresh() -> void:
@@ -99,6 +103,7 @@ func _memory() -> void:
 		var options := _grid(2)
 		hud._button(options, "Pular", Color(COLORS[4])).pressed.connect(hud.jump_requested.emit)
 		hud._button(options, "Jogar memória", Color(COLORS[4])).pressed.connect(func() -> void:
+			hud.play_sound(&"toque")
 			cards.assign(["Sol", "Lua", "Flor", "Sol", "Lua", "Flor"])
 			cards.shuffle()
 			first = -1
@@ -117,6 +122,7 @@ func _memory() -> void:
 func _reveal(index: int) -> void:
 	if locked or first == index:
 		return
+	hud.play_sound(&"toque")
 	card_buttons[index].text = cards[index]
 	if first < 0:
 		first = index
@@ -128,6 +134,7 @@ func _reveal(index: int) -> void:
 		card_buttons[index].disabled = true
 		pairs += 1
 		if pairs == 3:
+			hud.play_sound(&"recompensa")
 			care.played()
 			hud.show_reaction("Todos os pares! +8 moedas")
 			cards.clear()
@@ -157,7 +164,9 @@ func _experiment() -> void:
 				selection.erase(ingredient)
 		)
 	hud._button(hud.activity, "Misturar · %d/3 descobertas" % care.discoveries.size(), Color(COLORS[5])).pressed.connect(func() -> void:
+		var previous: int = care.discoveries.size()
 		hud.show_reaction(care.mix(selection))
+		hud.play_sound(&"recompensa" if care.discoveries.size() > previous else &"toque")
 		selection.clear()
 		paint.call_deferred()
 	)

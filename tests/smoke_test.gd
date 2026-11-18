@@ -57,9 +57,17 @@ func _run() -> void:
 	evolin._process(0.0)
 	_expect(evolin.tail_bone >= 0 and not evolin.skeleton.get_bone_pose_rotation(evolin.tail_bone).is_equal_approx(evolin.tail_rest), "O osso da cauda reage à animação")
 	await _test_care(game, hud)
+	_expect(game.sounds.players[&"mordida"].stream.get_length() > 0.0, "Áudio da mordida é carregado")
+	game.hud.play_sound(&"toque")
+	_expect(game.sounds.players[&"toque"].playing, "O HUD aciona o efeito de navegação")
+	for player: AudioStreamPlayer in game.sounds.players.values():
+		player.stop()
 	DirAccess.remove_absolute(game.care.save_path)
+	game.queue_free()
+	await process_frame
+	await process_frame
 	if failures == 0:
-		print("EVO: 24 verificações passaram.")
+		print("EVO: 26 verificações passaram.")
 	quit(1 if failures > 0 else 0)
 
 func _test_care(game: Node3D, hud: CanvasLayer) -> void:

@@ -14,6 +14,10 @@ O HUD mostra fome, higiene, energia, felicidade, XP, nível e moedas. Os seis me
 
 A tela usa um cenário ilustrado baseado no anexo e o Evolin em poses animadas do atlas fornecido. O quarto mantém o modelo 3D. A bandeja mostra os alimentos e as quantidades efetivas. A fome aparece no HUD superior e é atualizada ao arrastar e soltar um alimento sobre o Evolin. A área do personagem valida a entrega, e o alimento vai até a boca antes da reação de mastigar. As duas fileiras de navegação usam a arte fornecida. Quarto, Inventário e Loja atuam na tela; Evolução e Missões aguardam seus sistemas.
 
+## Sons
+
+O EVO usa efeitos curtos e originais em WAV para menus, comida, mordida, carinho, bolhas, pulo, descanso e recompensas. Os efeitos acompanham as ações e usam volume moderado. No navegador, o áudio começa após a primeira interação.
+
 ## Arquivos
 
 | Área | Arquivos |
@@ -29,7 +33,7 @@ A tela usa um cenário ilustrado baseado no anexo e o Evolin em poses animadas d
 
 - Importação por `godot --headless --editor --path . --import`.
 - Inicialização da cena principal por `godot --headless --path . --quit-after 50`.
-- Teste de integração por `godot --headless --path . --script res://tests/smoke_test.gd`. Vinte e quatro verificações aprovadas, cobrindo piscada, reação facial ao carinho, acerto e erro de toque, arraste, ciclo de vida dos corações, intervalo mínimo, iluminação e pulo.
+- Teste de integração por `godot --headless --path . --script res://tests/smoke_test.gd`. Vinte e seis verificações aprovadas, cobrindo piscada, reação facial ao carinho, acerto e erro de toque, arraste, ciclo de vida dos corações, intervalo mínimo, iluminação e pulo.
 - Renderização Compatibility em Linux via Mesa llvmpipe. O driver virtual reporta uma advertência de VSync.
 
 - Exportação Web sem threads com os templates oficiais da Godot 4.6.3. O GitHub Pages serviu o HTML, JavaScript, WebAssembly e PCK com HTTP 200.
@@ -42,4 +46,4 @@ O código e o projeto editável ficam na branch `main`. O GitHub Pages serve a b
 
 ## Pendências e limitações
 
-Evolução, personalidade completa, Pula EVO, Pintura Maluca, cenários próprios para as atividades, missões, economia completa, áudio e backup de salvamento ficam para as próximas etapas. O enquadramento e a área segura precisam ser confirmados no editor Godot para Android. Exportação APK, desempenho em aparelho e iOS seguem sem validação.
+Evolução, personalidade completa, Pula EVO, Pintura Maluca, cenários próprios para as atividades, missões, economia completa, trilha musical e backup de salvamento ficam para as próximas etapas. O enquadramento e a área segura precisam ser confirmados no editor Godot para Android. Exportação APK, desempenho em aparelho e iOS seguem sem validação.

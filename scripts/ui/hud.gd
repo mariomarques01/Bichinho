@@ -4,6 +4,7 @@ const Activities = preload("res://scripts/ui/activities.gd")
 
 const Feeding = preload("res://scripts/ui/feeding.gd")
 
+signal sound_requested(key: StringName)
 signal food_eaten
 signal food_drop(food: String, at: Vector2)
 signal activity_changed(index: int)
@@ -44,7 +45,11 @@ func _refresh() -> void:
 	menu.refresh()
 	feeding.refresh()
 
+func play_sound(key: StringName) -> void:
+	sound_requested.emit(key)
+
 func _open(index: int) -> void:
+	play_sound(&"toque")
 	var next := -1 if menu.mode == index else index
 	menu.enter(next)
 	activity_card.visible = next > 0
@@ -105,7 +110,10 @@ func _build() -> void:
 	profile = _label(identity, "", 32)
 	lamp_button = _button(header, "Anoitecer", Color("#594678"))
 	lamp_button.size_flags_horizontal = Control.SIZE_SHRINK_END
-	lamp_button.pressed.connect(func() -> void: lamp_requested.emit())
+	lamp_button.pressed.connect(func() -> void:
+		play_sound(&"toque")
+		lamp_requested.emit()
+	)
 	var needs_row := HBoxContainer.new()
 	needs_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_child(needs_row)

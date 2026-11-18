@@ -4,12 +4,14 @@ const Room = preload("res://scripts/core/room.gd")
 const Evolin = preload("res://scripts/pet/evolin.gd")
 const HUD = preload("res://scripts/ui/hud.gd")
 const Care = preload("res://scripts/needs/care.gd")
+const Sounds = preload("res://scripts/core/sounds.gd")
 const PET_LAYER := 2
 
 @onready var room: Room = $Room
 @onready var evolin: Evolin = $Evolin
 @onready var hud: HUD = $HUD
 var care := Care.new()
+var sounds := Sounds.new()
 var was_sleeping := false
 var pointer_at := Vector2.ZERO
 var last_sample := Vector2.ZERO
@@ -19,6 +21,8 @@ var ready_at := 0
 
 func _ready() -> void:
 	add_child(care)
+	add_child(sounds)
+	hud.sound_requested.connect(sounds.play)
 	hud.bind_care(care)
 	hud.activity_changed.connect(_activity_changed)
 	hud.food_drop.connect(_food_drop)
@@ -26,9 +30,14 @@ func _ready() -> void:
 	_refresh_rest()
 	evolin.reacted.connect(hud.show_reaction)
 	hud.pet_requested.connect(_pet)
-	hud.food_eaten.connect(evolin.eat)
+	hud.food_eaten.connect(func() -> void:
+		sounds.play(&"mordida")
+		evolin.eat()
+	)
 	hud.jump_requested.connect(func() -> void:
 		if care.rest_end == 0:
+			if not evolin.reaction or not evolin.reaction.is_running():
+				sounds.play(&"pulo")
 			evolin.jump()
 	)
 	hud.lamp_requested.connect(func() -> void:
@@ -83,6 +92,7 @@ func _physics_process(_delta: float) -> void:
 	if not hit.is_empty() and hud.menu.mode != 0:
 		if hud.menu.mode == 1:
 			if drag_sample and hud.menu.scrub():
+				sounds.play(&"bolha")
 				hud.bubble(pointer_at)
 		else:
 			_pet()
@@ -92,6 +102,7 @@ func _pet() -> void:
 	if now < ready_at or care.rest_end > 0:
 		return
 	ready_at = now + 410
+	sounds.play(&"carinho")
 	care.affection()
 	evolin.pet()
 	hud.heart(room.camera.unproject_position(evolin.heart_origin.global_position))

@@ -214,6 +214,7 @@ func _navigation(parent: Control) -> void:
 			1:
 				hotspot.pressed.connect(func() -> void:
 					shopping = false
+					hud.play_sound(&"toque")
 					refresh()
 					message.text = "Inventário · selecione um alimento ou arraste."
 					cards[selected].grab_focus()
@@ -223,6 +224,7 @@ func _navigation(parent: Control) -> void:
 			4:
 				hotspot.pressed.connect(func() -> void:
 					shopping = not shopping
+					hud.play_sound(&"toque")
 					refresh()
 					message.text = "Loja · toque em um alimento para comprar por 5 moedas." if shopping else "Arraste o alimento até o Evolin."
 				)
@@ -267,11 +269,14 @@ func _select(food: String) -> void:
 func _tap_food(food: String) -> void:
 	_select(food)
 	if shopping:
+		var before: int = care.coins
 		message.text = _food_message(food, care.buy(food))
+		hud.play_sound(&"recompensa" if care.coins < before else &"toque")
 
 func _tile_input(event: InputEvent, food: String) -> void:
 	if not shopping and event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 		_select(food)
+		hud.play_sound(&"comida")
 		pointer_food = food
 		press_position = get_viewport().get_mouse_position()
 
@@ -314,6 +319,7 @@ func serve(food: String, at: Vector2) -> void:
 	if care.stock[food] >= before:
 		return
 	animating = true
+	hud.play_sound(&"comida")
 	refresh()
 	var bite := _icon(canvas, art[food], Vector2.ZERO)
 	bite.size = Vector2(122, 122)
