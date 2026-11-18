@@ -24,6 +24,13 @@ A interface acompanha as reações do Evolin, mostra corações e oferece botõe
 - Teste de integração por `godot --headless --path . --script res://tests/smoke_test.gd`. Nove verificações aprovadas, cobrindo acerto e erro de toque, arraste, ciclo de vida dos corações, intervalo mínimo, iluminação e pulo.
 - Renderização Compatibility em Linux via Mesa llvmpipe. O driver virtual reporta uma advertência de VSync.
 
+- Exportação Web sem threads com os templates oficiais da Godot 4.6.3. O GitHub Pages serviu o HTML, JavaScript, WebAssembly e PCK com HTTP 200.
+- Download do ZIP publicado, extração em pasta limpa, importação e repetição das nove verificações headless.
+
+## Publicação
+
+O código e o projeto editável ficam na branch `main`. O GitHub Pages serve a branch `gh-pages` e disponibiliza o ZIP editável pelo rodapé do jogo.
+
 ## Pendências e limitações
 
 O próximo incremento é implementar necessidades, alimentação, banho, descanso persistente e carinho com efeito no progresso. Evolução, personalidade completa, minigames, laboratório, inventário, missões, economia, áudio e salvamento também ficam para as próximas etapas. O enquadramento e a área segura precisam ser confirmados no editor Godot para Android. Exportação APK, desempenho em aparelho e iOS seguem sem validação.
