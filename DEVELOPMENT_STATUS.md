@@ -6,6 +6,10 @@ Projeto Godot 4.6.3 com GDScript, Compatibility, referência de 1080 × 1920, or
 
 A interface acompanha as reações do Evolin, mostra corações e oferece botões para carinho, pulo e ciclo dia/noite. O toque primário é convertido em eventos de mouse pela Godot. A posição é projetada pela câmera e testada contra a área de colisão do personagem. Há um intervalo mínimo entre carinhos para limitar a emissão dos efeitos.
 
+## Primeiro incremento de jogabilidade
+
+O HUD mostra fome, higiene, energia, felicidade, XP, nível e moedas. Os seis menus permitem alimentar com cinco itens, tomar banho por arraste, descansar por 30, 60 ou 180 minutos, ganhar felicidade com carinho, jogar Memória Mágica com três pares e descobrir três receitas. As ações gravam um perfil local. O descanso recupera energia com base no tempo decorrido, inclusive com o jogo fechado.
+
 ## Arquivos
 
 | Área | Arquivos |
@@ -21,7 +25,7 @@ A interface acompanha as reações do Evolin, mostra corações e oferece botõe
 
 - Importação por `godot --headless --editor --path . --import`.
 - Inicialização da cena principal por `godot --headless --path . --quit-after 50`.
-- Teste de integração por `godot --headless --path . --script res://tests/smoke_test.gd`. Doze verificações aprovadas, cobrindo piscada, reação facial ao carinho, acerto e erro de toque, arraste, ciclo de vida dos corações, intervalo mínimo, iluminação e pulo.
+- Teste de integração por `godot --headless --path . --script res://tests/smoke_test.gd`. Vinte verificações aprovadas, cobrindo piscada, reação facial ao carinho, acerto e erro de toque, arraste, ciclo de vida dos corações, intervalo mínimo, iluminação e pulo.
 - Renderização Compatibility em Linux via Mesa llvmpipe. O driver virtual reporta uma advertência de VSync.
 
 - Exportação Web sem threads com os templates oficiais da Godot 4.6.3. O GitHub Pages serviu o HTML, JavaScript, WebAssembly e PCK com HTTP 200.
@@ -34,4 +38,4 @@ O código e o projeto editável ficam na branch `main`. O GitHub Pages serve a b
 
 ## Pendências e limitações
 
-O próximo incremento é implementar necessidades, alimentação, banho, descanso persistente e carinho com efeito no progresso. Evolução, personalidade completa, minigames, laboratório, inventário, missões, economia, áudio e salvamento também ficam para as próximas etapas. O enquadramento e a área segura precisam ser confirmados no editor Godot para Android. Exportação APK, desempenho em aparelho e iOS seguem sem validação.
+Evolução, personalidade completa, Pula EVO, Pintura Maluca, cenários próprios para as atividades, missões, economia completa, áudio e backup de salvamento ficam para as próximas etapas. O enquadramento e a área segura precisam ser confirmados no editor Godot para Android. Exportação APK, desempenho em aparelho e iOS seguem sem validação.

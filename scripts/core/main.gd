@@ -3,21 +3,45 @@ extends Node3D
 const Room = preload("res://scripts/core/room.gd")
 const Evolin = preload("res://scripts/pet/evolin.gd")
 const HUD = preload("res://scripts/ui/hud.gd")
+const Care = preload("res://scripts/needs/care.gd")
 const PET_LAYER := 2
 
 @onready var room: Room = $Room
 @onready var evolin: Evolin = $Evolin
 @onready var hud: HUD = $HUD
+var care := Care.new()
+var was_sleeping := false
 var pointer_at := Vector2.ZERO
 var last_sample := Vector2.ZERO
 var sample_pending := false
+var drag_sample := false
 var ready_at := 0
 
 func _ready() -> void:
+	add_child(care)
+	hud.bind_care(care)
+	care.changed.connect(_refresh_rest)
+	_refresh_rest()
 	evolin.reacted.connect(hud.show_reaction)
 	hud.pet_requested.connect(_pet)
-	hud.jump_requested.connect(evolin.jump)
-	hud.lamp_requested.connect(func() -> void: hud.set_night(room.toggle_lamp()))
+	hud.food_eaten.connect(evolin.eat)
+	hud.jump_requested.connect(func() -> void:
+		if care.rest_end == 0:
+			evolin.jump()
+	)
+	hud.lamp_requested.connect(func() -> void:
+		if care.rest_end == 0:
+			hud.set_night(room.toggle_lamp())
+	)
+
+func _refresh_rest() -> void:
+	var sleeping := care.rest_end > 0
+	evolin.sleeping = sleeping
+	hud.lamp_button.disabled = sleeping
+	if sleeping != was_sleeping:
+		if room.night != sleeping:
+			hud.set_night(room.toggle_lamp())
+		was_sleeping = sleeping
 
 func _unhandled_input(event: InputEvent) -> void:
 	# Godot maps the primary Android touch to mouse events for both UI and the room.
@@ -25,9 +49,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		_sample(event.position)
 	elif event is InputEventMouseMotion and event.button_mask & MOUSE_BUTTON_MASK_LEFT:
 		if event.position.distance_squared_to(last_sample) >= 34.0 * 34.0:
-			_sample(event.position)
+			_sample(event.position, true)
 
-func _sample(at: Vector2) -> void:
+func _sample(at: Vector2, drag: bool = false) -> void:
+	drag_sample = drag
 	pointer_at = at
 	last_sample = at
 	sample_pending = true
@@ -44,12 +69,17 @@ func _physics_process(_delta: float) -> void:
 	ray.collide_with_areas = true
 	var hit := get_world_3d().direct_space_state.intersect_ray(ray)
 	if not hit.is_empty():
-		_pet()
+		if hud.menu.mode == 1:
+			if drag_sample and hud.menu.scrub():
+				hud.bubble(pointer_at)
+		else:
+			_pet()
 
 func _pet() -> void:
 	var now := Time.get_ticks_msec()
-	if now < ready_at:
+	if now < ready_at or care.rest_end > 0:
 		return
 	ready_at = now + 410
+	care.affection()
 	evolin.pet()
 	hud.heart(room.camera.unproject_position(evolin.heart_origin.global_position))

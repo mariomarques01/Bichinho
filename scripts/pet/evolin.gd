@@ -14,6 +14,8 @@ const AFFECTION_DURATION := 0.82
 var time := 0.0
 var delight := 0.0
 var reaction: Tween
+var sleeping := false
+var chew := 0.0
 var face: MeshInstance3D
 var eyelids := ShaderMaterial.new()
 var blink_elapsed := 0.0
@@ -28,7 +30,9 @@ func _process(delta: float) -> void:
 	var sway := sin(time * 2.2) * 0.026
 	var wiggle := sin(delight * 19.0) * sin(delight * PI / AFFECTION_DURATION) * 0.13
 	pose.rotation.z = sway + wiggle
-	pose.scale.y = 1.0 + sin(time * 2.2) * 0.022
+	chew = maxf(0.0, chew - delta)
+	pose.scale.y = 1.0 + sin(time * 2.2) * 0.022 - absf(sin(chew * 17.0)) * minf(chew, 0.08)
+
 	_update_eyelids(delta)
 
 func _update_eyelids(delta: float) -> void:
@@ -36,7 +40,7 @@ func _update_eyelids(delta: float) -> void:
 	var blink_phase := clampf((blink_elapsed - BLINK_INTERVAL + BLINK_DURATION) / BLINK_DURATION, 0.0, 1.0)
 	var blink := sin(blink_phase * PI)
 	var affection := smoothstep(0.0, 0.15, delight) * (1.0 - smoothstep(0.67, AFFECTION_DURATION, delight))
-	var closure := maxf(blink, affection)
+	var closure := 1.0 if sleeping else maxf(blink, affection)
 	if closure > 0.001:
 		eyelids.set_shader_parameter("closure", closure)
 		face.material_overlay = eyelids
@@ -46,6 +50,9 @@ func _update_eyelids(delta: float) -> void:
 func pet() -> void:
 	delight = AFFECTION_DURATION
 	reacted.emit("Evolin adorou o carinho!")
+
+func eat() -> void:
+	chew = 0.64
 
 func jump() -> void:
 	if reaction and reaction.is_running():
