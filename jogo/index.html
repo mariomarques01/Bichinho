@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#302342">
+  <title>EVO — Quarto do Evolin</title>
+  <style>
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #302342; color: #fff4ff; font: 16px system-ui, sans-serif; }
+    canvas { display: block; touch-action: none; outline: none; }
+    #status { position: fixed; inset: 0; display: grid; place-content: center; justify-items: center; padding: 24px; text-align: center; background: #302342; }
+    #status[hidden] { display: none; }
+    h1 { margin: 0; color: #91efce; font-size: 3rem; }
+    progress { width: min(16rem, 70vw); accent-color: #91efce; }
+    a { color: #b9f8e2; }
+  </style>
+  <link id="-gd-engine-icon" rel="icon" type="image/png" href="index.icon.png" />
+<link rel="apple-touch-icon" href="index.apple-touch-icon.png"/>
+
+</head>
+<body>
+  <canvas id="canvas" tabindex="0">O navegador precisa oferecer suporte a WebGL 2 para rodar o EVO.</canvas>
+  <div id="status" role="status">
+    <h1>EVO</h1>
+    <p id="message">Preparando o quarto do Evolin…</p>
+    <progress id="progress" aria-label="Carregamento do jogo"></progress>
+    <p><a href="../EVO-Godot.zip">Baixar projeto Godot</a></p>
+  </div>
+  <script src="index.js"></script>
+  <script>
+    const statusPanel = document.getElementById('status');
+    const message = document.getElementById('message');
+    const progress = document.getElementById('progress');
+    const config = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":32260,"index.wasm":37700666},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+    const engine = new Engine(config);
+
+    engine.startGame({
+      onProgress(current, total) {
+        if (total > 0) {
+          progress.max = total;
+          progress.value = current;
+        }
+      }
+    }).then(() => {
+      statusPanel.hidden = true;
+    }).catch((error) => {
+      progress.hidden = true;
+      message.textContent = 'Não foi possível iniciar o EVO. Verifique se o navegador oferece WebGL 2 e recarregue a página.';
+      console.error(error);
+    });
+  </script>
+</body>
+</html>
