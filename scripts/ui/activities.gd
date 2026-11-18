@@ -67,7 +67,7 @@ func _food() -> void:
 			hud.show_reaction(care.feed(food))
 			if care.stock[food] < before:
 				hud.food_eaten.emit()
-			paint()
+			paint.call_deferred()
 		)
 
 func _rest() -> void:
@@ -117,7 +117,7 @@ func _memory() -> void:
 			first = -1
 			pairs = 0
 			locked = false
-			paint()
+			paint.call_deferred()
 		)
 		return
 	card_buttons.clear()
@@ -144,7 +144,7 @@ func _reveal(index: int) -> void:
 			care.played()
 			hud.show_reaction("Todos os pares! +8 moedas")
 			cards.clear()
-			paint()
+			paint.call_deferred()
 	else:
 		locked = true
 		var left := card_buttons[previous]
@@ -172,5 +172,5 @@ func _experiment() -> void:
 	hud._button(hud.activity, "Misturar · %d/3 descobertas" % care.discoveries.size(), Color(COLORS[5])).pressed.connect(func() -> void:
 		hud.show_reaction(care.mix(selection))
 		selection.clear()
-		paint()
+		paint.call_deferred()
 	)

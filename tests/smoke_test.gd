@@ -53,7 +53,7 @@ func _run() -> void:
 	_expect(evolin.face.material_overlay == evolin.eyelids, "Evolin pisca sozinho")
 	evolin._update_eyelids(0.13)
 	_expect(evolin.face.material_overlay == null, "Olhos reabrem após a piscada")
-	_test_care(game, hud)
+	await _test_care(game, hud)
 	DirAccess.remove_absolute(game.care.save_path)
 	if failures == 0:
 		print("EVO: 20 verificações passaram.")
@@ -65,6 +65,7 @@ func _test_care(game: Node3D, hud: CanvasLayer) -> void:
 	care.stock["Maçã"] = 2
 	hud.tabs[0].pressed.emit()
 	hud.activity.get_child(1).get_child(0).pressed.emit()
+	await process_frame
 	_expect(care.stock["Maçã"] == 1 and hud.bars["Fome"].value == 65, "Alimentação consome um item e atualiza o HUD")
 	hud.tabs[1].pressed.emit()
 	care.needs["Higiene"] = 40.0
@@ -79,6 +80,7 @@ func _test_care(game: Node3D, hud: CanvasLayer) -> void:
 	_expect(care.needs["Energia"] > 60.0 and not game.evolin.sleeping, "Descanso recupera energia e termina")
 	hud.tabs[4].pressed.emit()
 	hud.activity.get_child(2).get_child(1).pressed.emit()
+	await process_frame
 	var balance: int = care.coins
 	for value in ["Sol", "Lua", "Flor"]:
 		var first: int = hud.menu.cards.find(value)
@@ -86,11 +88,13 @@ func _test_care(game: Node3D, hud: CanvasLayer) -> void:
 		hud.menu.card_buttons[first].pressed.emit()
 		hud.menu.card_buttons[second].pressed.emit()
 	_expect(care.coins == balance + 8, "Concluir o jogo da memória concede moedas")
+	await process_frame
 	hud.tabs[5].pressed.emit()
 	var ingredients: GridContainer = hud.activity.get_child(2)
 	ingredients.get_child(0).button_pressed = true
 	ingredients.get_child(1).button_pressed = true
 	hud.activity.get_child(3).pressed.emit()
+	await process_frame
 	_expect("Cristal+Folha" in care.discoveries, "A receita é descoberta pelo menu")
 	_expect(care.coins == balance + 14, "A primeira descoberta concede moedas")
 	var save := ConfigFile.new()
