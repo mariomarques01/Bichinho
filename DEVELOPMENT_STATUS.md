@@ -30,7 +30,7 @@ A interface acompanha as reações do Evolin, mostra corações e oferece botõe
 
 ## Publicação
 
-O código e o projeto editável ficam na branch `main`. O GitHub Pages serve a branch `gh-pages` e disponibiliza o ZIP editável pelo rodapé do jogo.
+O código e o projeto editável ficam na branch `main`. O GitHub Pages serve a branch `gh-pages` e disponibiliza o ZIP editável pelo link no README.
 
 ## Pendências e limitações
 

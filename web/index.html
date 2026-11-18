@@ -8,20 +8,14 @@
   <link rel="icon" type="image/png" href="jogo/index.icon.png">
   <style>
     * { box-sizing: border-box; }
-    body { margin: 0; height: 100dvh; display: grid; place-items: center; background: #241931; color: #fff4ff; font: 500 14px system-ui, sans-serif; }
-    main { display: grid; grid-template-rows: minmax(0, 1fr) auto; width: min(100%, 64dvh); height: 100%; background: #36284e; }
+    body { margin: 0; height: 100dvh; padding-bottom: env(safe-area-inset-bottom); display: grid; place-items: center; background: #241931; }
+    main { width: min(100%, 64dvh); height: 100%; background: #36284e; }
     iframe { display: block; width: 100%; height: 100%; border: 0; }
-    footer { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px 20px; padding: 9px 10px max(9px, env(safe-area-inset-bottom)); }
-    a { color: #b9f8e2; }
   </style>
 </head>
 <body>
   <main>
     <iframe src="jogo/index.html" title="EVO — Quarto do Evolin" allow="autoplay; fullscreen"></iframe>
-    <footer>
-      <a href="EVO-Godot.zip" download>Baixar projeto Godot</a>
-      <a href="https://github.com/mariomarques01/Bichinho">Ver código-fonte</a>
-    </footer>
   </main>
 </body>
 </html>
