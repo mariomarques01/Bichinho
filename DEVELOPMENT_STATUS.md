@@ -12,7 +12,7 @@ O HUD mostra fome, higiene, energia, felicidade, XP, nível e moedas. Os seis me
 
 ## Tela Alimentar
 
-A tela usa um cenário ilustrado e o Evolin 3D em tempo real. A bandeja mostra os alimentos e as quantidades efetivas. A prévia mostra a fome antes e depois. Toque para selecionar e confirmar ou arraste e solte sobre o Evolin. A colisão valida a entrega, e o alimento vai até a boca antes da reação de mastigar.
+A tela usa um cenário ilustrado baseado no anexo e o Evolin em poses animadas do atlas fornecido. O quarto mantém o modelo 3D. A bandeja mostra os alimentos e as quantidades efetivas. A prévia mostra a fome antes e depois. Toque para selecionar e confirmar ou arraste e solte sobre o Evolin. A área do personagem valida a entrega, e o alimento vai até a boca antes da reação de mastigar.
 
 ## Arquivos
 

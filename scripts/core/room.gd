@@ -16,8 +16,6 @@ func _ready() -> void:
 	get_viewport().size_changed.connect(_frame_camera)
 	_frame_camera()
 	_build_room()
-	for light in [$Sun, $Fill, $LampLight]:
-		light.layers = 3
 	backdrop = CanvasLayer.new()
 	backdrop.layer = -1
 	add_child(backdrop)
@@ -34,9 +32,7 @@ func set_feeding(enabled: bool) -> void:
 	backdrop.visible = enabled
 	world.environment.background_mode = Environment.BG_CANVAS if enabled else Environment.BG_CLEAR_COLOR
 	world.environment.background_canvas_max_layer = -1
-	camera.cull_mask = 2 if enabled else 3
-	camera.v_offset = -0.96 if enabled else 0.0
-	camera.h_offset = 0.22 if enabled else 0.0
+	camera.cull_mask = 0 if enabled else 1048575
 
 func _frame_camera() -> void:
 	var size := get_viewport().get_visible_rect().size

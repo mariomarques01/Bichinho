@@ -1,16 +1,21 @@
 extends MarginContainer
 
+const Activities = preload("res://scripts/ui/activities.gd")
 const Care = preload("res://scripts/needs/care.gd")
 const SHEET = preload("res://assets/textures/feeding/sprites.jpg")
 const PROFILE_ICON := Rect2(790, 18, 62, 66)
 const HUNGER_ICON := Rect2(791, 101, 49, 49)
+const FOOD_NAMES := {"Sanduíche": "Carne", "Biscoito": "Cupcake"}
+const IDLE := Rect2i(16, 13, 180, 187)
+const EATING := Rect2i(391, 13, 175, 185)
+const TITLE := Rect2i(782, 170, 247, 70)
 const FOOD_ART := {
 	"Maçã": Rect2(29, 428, 79, 65),
 	"Banana": Rect2(131, 432, 82, 63),
+	"Sanduíche": Rect2(234, 426, 82, 69),
+	"Biscoito": Rect2(341, 426, 82, 68),
 	"Frutas vermelhas": Rect2(440, 428, 82, 67),
 }
-const SANDWICH = preload("res://assets/textures/feeding/sandwich.png")
-const COOKIE = preload("res://assets/textures/feeding/cookie.png")
 
 var hud: CanvasLayer
 var care: Care
@@ -31,7 +36,9 @@ var press_position := Vector2.ZERO
 var pointer_food := ""
 var ghost: TextureRect
 var animating := false
-var mouth_position := Vector2.ZERO
+var character: TextureRect
+var idle_pose: Texture2D
+var eating_pose: Texture2D
 
 func setup(owner_hud: CanvasLayer, manager: Care) -> void:
 	hud = owner_hud
@@ -39,8 +46,11 @@ func setup(owner_hud: CanvasLayer, manager: Care) -> void:
 	canvas = get_parent()
 	for name in FOOD_ART:
 		art[name] = _atlas(FOOD_ART[name])
-	art["Sanduíche"] = SANDWICH
-	art["Biscoito"] = COOKIE
+	idle_pose = _sprite(IDLE)
+	eating_pose = _sprite(EATING)
+	character = _icon(canvas, idle_pose, Vector2.ZERO)
+	character.z_index = -1
+	canvas.resized.connect(_frame_character)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = hud.safe.theme
@@ -92,10 +102,8 @@ func _build() -> void:
 	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	gap.custom_minimum_size.y = 72
 	column.add_child(gap)
-	var title: PanelContainer = hud._panel(column, Color("#de6916"), 35)
+	var title := _icon(column, _sprite(TITLE), Vector2(455, 128))
 	title.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	title.add_theme_stylebox_override("panel", _plate(Color("#d96416"), Color("#ffe58b"), 49, 28))
-	_label(title, "Alimentar", 65)
 	var stage := Control.new()
 	stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stage.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -126,12 +134,12 @@ func _build() -> void:
 	tray.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tray.add_theme_constant_override("separation", 10)
 	column.add_child(tray)
-	for food: String in Care.FOODS:
+	for food: String in FOOD_ART:
 		var tile := Button.new()
 		tile.custom_minimum_size.y = 154
 		tile.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		tile.tooltip_text = food
-		tile.accessibility_name = food
+		tile.tooltip_text = FOOD_NAMES.get(food, food)
+		tile.accessibility_name = tile.tooltip_text
 		tile.toggle_mode = true
 		tile.pressed.connect(_select.bind(food))
 		tile.gui_input.connect(_tile_input.bind(food))
@@ -160,14 +168,45 @@ func _build() -> void:
 	message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	message.custom_minimum_size.y = 52
+	_navigation(column)
+
+func _navigation(parent: Control) -> void:
+	var row := HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_theme_constant_override("separation", 10)
+	parent.add_child(row)
+	var icons := [
+		Rect2(803, 183, 48, 44), Rect2(1049, 184, 51, 43),
+		Rect2(798, 256, 57, 45), Rect2(1045, 254, 56, 45),
+		Rect2(799, 325, 57, 46), Rect2(1037, 324, 47, 46),
+	]
+	for index in icons.size():
+		var tab: Button = hud._button(row, "", Color(Activities.COLORS[index]))
+		tab.custom_minimum_size.y = 146
+		tab.accessibility_name = Activities.TITLES[index]
+		var rim := Color("#ffe17f") if index == 0 else Color("#dcbbea")
+		tab.add_theme_stylebox_override("normal", _plate(Color(Activities.COLORS[index]), rim, 32, 0))
+		if index != 0:
+			tab.pressed.connect(hud._open.bind(index))
+		var icon := _icon(tab, _atlas(icons[index]), Vector2.ZERO)
+		icon.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		icon.offset_top = 13
+		icon.offset_bottom = -42
+		var label := _label(tab, Activities.TITLES[index], 21)
+		label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+		label.offset_top = -39
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
 func open() -> void:
 	show()
+	character.show()
+	_frame_character()
 	_select(selected)
 	message.text = "Arraste o alimento até o Evolin."
 
 func close() -> void:
 	hide()
+	character.hide()
 	_cancel_drag()
 
 func refresh() -> void:
@@ -181,8 +220,8 @@ func refresh() -> void:
 	var preview := mini(100, current + Care.FOODS[selected]) if available > 0 else current
 	hunger.text = "%d%%  →  %d%%" % [current, preview]
 	gauge.value = preview
-	food_detail.text = "%s  ·  +%d de fome" % [selected, Care.FOODS[selected]]
-	action.text = "Comprar %s · 5 moedas" % selected if available == 0 else "Alimentar"
+	food_detail.text = "%s  ·  +%d de fome" % [FOOD_NAMES.get(selected, selected), Care.FOODS[selected]]
+	action.text = "Comprar %s · 5 moedas" % FOOD_NAMES.get(selected, selected) if available == 0 else "Alimentar"
 	action.disabled = animating or care.rest_end > 0 or (available > 0 and care.needs["Fome"] >= 99.0)
 	for food: String in cards:
 		counts[food].text = "×%d" % care.stock[food]
@@ -245,6 +284,8 @@ func serve(food: String, at: Vector2, allow_purchase := false) -> void:
 		return
 	var before: int = care.stock[food]
 	message.text = care.feed(food)
+	if FOOD_NAMES.has(food):
+		message.text = message.text.replace(food, FOOD_NAMES[food]).replace(food.to_lower(), String(FOOD_NAMES[food]).to_lower())
 	if care.stock[food] >= before:
 		return
 	animating = true
@@ -255,15 +296,63 @@ func serve(food: String, at: Vector2, allow_purchase := false) -> void:
 	bite.pivot_offset = bite.size / 2
 	bite.z_index = 7
 	var flight := create_tween().set_trans(Tween.TRANS_QUAD)
-	flight.tween_property(bite, "position", mouth_position - bite.size / 2, 0.25).set_ease(Tween.EASE_OUT)
+	flight.tween_property(bite, "position", _mouth_position() - bite.size / 2, 0.25).set_ease(Tween.EASE_OUT)
 	flight.tween_callback(hud.food_eaten.emit)
+	flight.tween_callback(func() -> void:
+		character.texture = eating_pose
+		character.pivot_offset = character.size * Vector2(0.5, 1.0)
+	)
+	flight.parallel().tween_property(character, "scale", Vector2(1.04, 0.96), 0.13)
 	flight.tween_property(bite, "scale", Vector2.ONE * 0.05, 0.20)
 	flight.parallel().tween_property(bite, "modulate:a", 0.0, 0.20)
 	flight.tween_callback(bite.queue_free)
+	flight.tween_property(character, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK)
+	flight.tween_interval(0.22)
+	flight.tween_callback(func() -> void: character.texture = idle_pose)
 	flight.tween_callback(func() -> void:
 		animating = false
 		refresh()
 	)
+
+func _frame_character() -> void:
+	var stage := canvas.size
+	var height := minf(stage.x * 0.63, stage.y * 0.34)
+	character.size = Vector2(height * 0.96, height)
+	character.position = Vector2(stage.x * 0.46 - character.size.x * 0.5, stage.y * 0.60 - height)
+
+func _mouth_position() -> Vector2:
+	return character.position + character.size * Vector2(0.69, 0.58)
+
+func accepts_drop(at: Vector2) -> bool:
+	var normalized := (at - character.position) / character.size
+	var body := (normalized - Vector2(0.56, 0.54)) / Vector2(0.43, 0.46)
+	return body.length_squared() <= 1.0
+
+func _sprite(region: Rect2i) -> ImageTexture:
+	var image := SHEET.get_image().get_region(region)
+	image.convert(Image.FORMAT_RGBA8)
+	# Clear only the pale backdrop connected to the square's perimeter.
+	var queue: Array[Vector2i] = []
+	for x in region.size.x:
+		queue.append(Vector2i(x, 0))
+		queue.append(Vector2i(x, region.size.y - 1))
+	for y in region.size.y:
+		queue.append(Vector2i(0, y))
+		queue.append(Vector2i(region.size.x - 1, y))
+	var bounds := Rect2i(Vector2i.ZERO, region.size)
+	var index := 0
+	while index < queue.size():
+		var pixel := queue[index]
+		index += 1
+		if not bounds.has_point(pixel):
+			continue
+		var color := image.get_pixelv(pixel)
+		if color.a == 0 or minf(color.r, minf(color.g, color.b)) < 0.86:
+			continue
+		image.set_pixelv(pixel, Color.TRANSPARENT)
+		for direction in [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]:
+			queue.append(pixel + direction)
+	return ImageTexture.create_from_image(image)
 
 func _atlas(region: Rect2) -> AtlasTexture:
 	var texture := AtlasTexture.new()
