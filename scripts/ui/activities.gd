@@ -115,6 +115,7 @@ func _reveal(index: int) -> void:
 		card_buttons[previous].disabled = true
 		card_buttons[index].disabled = true
 		pairs += 1
+		hud.play_pair.emit(pairs == 3)
 		if pairs == 3:
 			hud.play_sound(&"recompensa")
 			care.played()
@@ -140,6 +141,7 @@ func _experiment() -> void:
 		button.toggled.connect(func(on: bool) -> void:
 			if on and selection.size() < 2:
 				selection.append(ingredient)
+				hud.ingredient_selected.emit()
 			elif on:
 				button.set_pressed_no_signal(false)
 			else:
@@ -148,6 +150,8 @@ func _experiment() -> void:
 	hud._button(hud.activity, "Misturar · %d/3 descobertas" % care.discoveries.size(), Color(COLORS[5])).pressed.connect(func() -> void:
 		var previous: int = care.discoveries.size()
 		hud.show_reaction(care.mix(selection))
+		if selection.size() == 2:
+			hud.mixture_ready.emit()
 		hud.play_sound(&"recompensa" if care.discoveries.size() > previous else &"toque")
 		selection.clear()
 		paint.call_deferred()

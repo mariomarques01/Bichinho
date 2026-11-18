@@ -45,6 +45,9 @@ var press_position := Vector2.ZERO
 var pointer_food := ""
 var ghost: TextureRect
 var animating := false
+var idle_clock := 0.0
+var food_motion: Tween
+var serving_icon: TextureRect
 var shopping := false
 var character: TextureRect
 var contact_shadow: TextureRect
@@ -242,7 +245,22 @@ func close() -> void:
 	hide()
 	contact_shadow.hide()
 	character.hide()
+	if food_motion and food_motion.is_running():
+		food_motion.kill()
+	if is_instance_valid(serving_icon):
+		serving_icon.queue_free()
+	animating = false
+	character.scale = Vector2.ONE
+	character.texture = idle_pose
 	_cancel_drag()
+
+func _process(delta: float) -> void:
+	if not visible or animating:
+		return
+	idle_clock += delta
+	var breath := sin(idle_clock * 3.4)
+	character.pivot_offset = character.size * Vector2(0.5, 1.0)
+	character.scale = Vector2(1.0 - breath * 0.008, 1.0 + breath * 0.018)
 
 func refresh() -> void:
 	profile.text = "Nível %d   ·   %d/50 XP" % [1 + care.xp / 50, care.xp % 50]
@@ -326,7 +344,9 @@ func serve(food: String, at: Vector2) -> void:
 	bite.position = at - bite.size / 2
 	bite.pivot_offset = bite.size / 2
 	bite.z_index = 7
-	var flight := create_tween().set_trans(Tween.TRANS_QUAD)
+	serving_icon = bite
+	food_motion = create_tween().set_trans(Tween.TRANS_QUAD)
+	var flight := food_motion
 	flight.tween_property(bite, "position", _mouth_position() - bite.size / 2, 0.25).set_ease(Tween.EASE_OUT)
 	flight.tween_callback(hud.food_eaten.emit)
 	flight.tween_callback(func() -> void:
@@ -337,13 +357,16 @@ func serve(food: String, at: Vector2) -> void:
 	flight.tween_property(bite, "scale", Vector2.ONE * 0.05, 0.20)
 	flight.parallel().tween_property(bite, "modulate:a", 0.0, 0.20)
 	flight.tween_callback(bite.queue_free)
-	flight.tween_property(character, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK)
-	flight.tween_interval(0.22)
+	flight.tween_method(_chew_pose, 0.0, 1.0, 0.44)
 	flight.tween_callback(func() -> void: character.texture = idle_pose)
 	flight.tween_callback(func() -> void:
 		animating = false
 		refresh()
 	)
+
+func _chew_pose(phase: float) -> void:
+	var bite := absf(sin(phase * TAU)) * (1.0 - phase * 0.5)
+	character.scale = Vector2(1.0 + bite * 0.065, 1.0 - bite * 0.095)
 
 func _food_message(food: String, text: String) -> String:
 	var label: String = FOOD_NAMES.get(food, food)

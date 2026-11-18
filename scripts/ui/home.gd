@@ -33,6 +33,8 @@ var stat_bars: Array[ProgressBar] = []
 var action_buttons: Array[Action] = []
 var sharpen := ShaderMaterial.new()
 var reaction: Tween
+var idle_clock := 0.0
+var sleeping := false
 
 func setup(owner_hud: CanvasLayer, profile: Care) -> void:
 	hud = owner_hud
@@ -47,6 +49,14 @@ func setup(owner_hud: CanvasLayer, profile: Care) -> void:
 	get_parent().resized.connect(_frame)
 	_frame()
 	refresh()
+
+func _process(delta: float) -> void:
+	if not visible or (reaction and reaction.is_running()):
+		return
+	idle_clock += delta
+	var breath := sin(idle_clock * (1.65 if sleeping else 2.75))
+	character.scale = Vector2(1.0 - breath * 0.012, 1.0 + breath * 0.022)
+	character.rotation = sin(idle_clock * 1.45) * 0.020
 
 func _frame() -> void:
 	scale = get_parent().size / DESIGN
@@ -154,9 +164,12 @@ func react() -> void:
 	if reaction and reaction.is_running():
 		reaction.kill()
 	character.scale = Vector2.ONE
+	character.rotation = 0.0
 	reaction = create_tween()
-	reaction.tween_property(character, "scale", Vector2(1.045, 0.96), 0.13)
+	reaction.tween_property(character, "scale", Vector2(1.055, 0.94), 0.13)
+	reaction.parallel().tween_property(character, "rotation", -0.065, 0.13)
 	reaction.tween_property(character, "scale", Vector2.ONE, 0.31).set_trans(Tween.TRANS_BACK)
+	reaction.parallel().tween_property(character, "rotation", 0.0, 0.25)
 
 func _atlas(region: Rect2) -> AtlasTexture:
 	var art := AtlasTexture.new()

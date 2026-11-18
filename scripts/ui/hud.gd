@@ -7,6 +7,9 @@ const Bath = preload("res://scripts/ui/bath.gd")
 const Home = preload("res://scripts/ui/home.gd")
 
 signal sound_requested(key: StringName)
+signal play_pair(final_pair: bool)
+signal ingredient_selected
+signal mixture_ready
 signal food_eaten
 signal food_drop(food: String, at: Vector2)
 signal activity_changed(index: int)
@@ -190,8 +193,11 @@ func set_night(night: bool) -> void:
 func heart(at: Vector2) -> void:
 	_float_effect(at, "♥", Color("#ff9bcc"))
 
-func bubble(at: Vector2) -> void:
-	_float_effect(at, "○", Color("#b2f5ff"))
+func dream(at: Vector2) -> void:
+	_float_effect(at, "Z", Color("#a4dfff"))
+
+func spark(at: Vector2) -> void:
+	_float_effect(at, "✦", Color("#ffdf90"))
 
 func _float_effect(at: Vector2, symbol: String, color: Color) -> void:
 	var mark := _label($Interface, symbol, 84)

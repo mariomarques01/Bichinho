@@ -22,6 +22,10 @@ A tela usa um cenário ilustrado baseado no anexo e o Evolin em poses animadas d
 
 A tela usa a arte de referência fornecida para cenário, personagem, banheira e navegação. O HUD exibe dados do perfil. A esponja e o sabonete lavam o Evolin, o xampu gera bolhas extras e a toalha tira a espuma. Arraste um item sobre a banheira para progredir e atualizar a higiene. Evolução, Missões e compra de gemas permanecem sem ação nesta tela.
 
+## Animações por atividade
+
+O Evolin respira no quarto, alterna a pose de mordida e mastigação ao comer, reage ao toque durante o banho e se encolhe com respiração mais lenta ao dormir. Carinho dispara o balanço e os corações. Pares de Memória Mágica acionam pulos, com comemoração maior no último par. Experimentar inclina o Evolin ao selecionar ingredientes e aciona um pulo com brilho ao misturar.
+
 ## Sons
 
 O EVO usa efeitos curtos e originais em WAV para menus, comida, mordida, carinho, bolhas, pulo, descanso e recompensas. Os efeitos acompanham as ações e usam volume moderado. No navegador, o áudio começa após a primeira interação.
@@ -41,7 +45,7 @@ O EVO usa efeitos curtos e originais em WAV para menus, comida, mordida, carinho
 
 - Importação por `godot --headless --editor --path . --import`.
 - Inicialização da cena principal por `godot --headless --path . --quit-after 50`.
-- Teste de integração por `godot --headless --path . --script res://tests/smoke_test.gd`. Trinta verificações aprovadas, cobrindo piscada, reação facial ao carinho, acerto e erro de toque, arraste, ciclo de vida dos corações, intervalo mínimo, iluminação e pulo.
+- Teste de integração por `godot --headless --path . --script res://tests/smoke_test.gd`. Trinta e sete verificações aprovadas, cobrindo piscada, reação facial ao carinho, acerto e erro de toque, arraste, ciclo de vida dos corações, intervalo mínimo, iluminação e pulo.
 - Renderização Compatibility em Linux via Mesa llvmpipe. O driver virtual reporta uma advertência de VSync.
 
 - Exportação Web sem threads com os templates oficiais da Godot 4.6.3. O GitHub Pages serviu o HTML, JavaScript, WebAssembly e PCK com HTTP 200.

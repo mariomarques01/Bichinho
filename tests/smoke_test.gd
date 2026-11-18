@@ -16,6 +16,9 @@ func _run() -> void:
 	var evolin: Node3D = game.get_node("Evolin")
 	var room: Node3D = game.get_node("Room")
 	var hud: CanvasLayer = game.get_node("HUD")
+	var pulse: float = hud.home.idle_clock
+	await create_timer(0.12).timeout
+	_expect(hud.home.idle_clock > pulse, "Evolin respira no quarto")
 	var head: Vector2 = hud.home.pet_point()
 	_click(Vector2(4, 4))
 	await physics_frame
@@ -66,7 +69,7 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 	if failures == 0:
-		print("EVO: 30 verificações passaram.")
+		print("EVO: 37 verificações passaram.")
 	quit(1 if failures > 0 else 0)
 
 func _test_care(game: Node3D, hud: CanvasLayer) -> void:
@@ -92,6 +95,7 @@ func _test_care(game: Node3D, hud: CanvasLayer) -> void:
 	await process_frame
 	_expect(care.stock["Maçã"] == 0, "Soltar alimento sobre o Evolin consome uma unidade")
 	hud._open(0)
+	_expect(not hud.feeding.animating and hud.feeding.character.texture == hud.feeding.idle_pose, "Sair de Alimentar encerra a mastigação")
 	hud.home.action_buttons[1].pressed.emit()
 	await hud.home.action_buttons[1].chosen
 	care.needs["Higiene"] = 40.0
@@ -105,9 +109,12 @@ func _test_care(game: Node3D, hud: CanvasLayer) -> void:
 	for stroke in 10:
 		hud.bath.scrub(Vector2(350, 500))
 	_expect(care.needs["Higiene"] == 72.0 and hud.bath.readings[1].text == "72%", "Banho recupera higiene e atualiza o HUD após dez movimentos")
+	_expect(float(hud.bath.movement.get_shader_parameter("response")) > 0.0, "Ensaboar faz o Evolin se mexer na banheira")
 	hud.tabs[2].pressed.emit()
 	hud.menu.rest_buttons[0].pressed.emit()
 	_expect(care.rest_end > care.now() and game.evolin.sleeping, "Descanso ativa o estado de sono")
+	await create_timer(0.32).timeout
+	_expect(game.evolin.rest_weight > 0.5 and game.evolin.pose.scale.y < 0.9, "Evolin se encolhe para dormir")
 	care.needs["Energia"] = 40.0
 	care.advance(care.rest_end)
 	_expect(care.needs["Energia"] > 60.0 and not game.evolin.sleeping, "Descanso recupera energia e termina")
@@ -121,13 +128,16 @@ func _test_care(game: Node3D, hud: CanvasLayer) -> void:
 		hud.menu.card_buttons[first].pressed.emit()
 		hud.menu.card_buttons[second].pressed.emit()
 	_expect(care.coins == balance + 8, "Concluir o jogo da memória concede moedas")
+	_expect(game.evolin.reaction.is_running(), "O último par aciona a comemoração")
 	await process_frame
 	hud.tabs[5].pressed.emit()
 	var ingredients: GridContainer = hud.activity.get_child(2)
 	ingredients.get_child(0).button_pressed = true
 	ingredients.get_child(1).button_pressed = true
+	_expect(game.evolin.curious > 0.0, "Evolin se inclina ao escolher ingrediente")
 	hud.activity.get_child(3).pressed.emit()
 	await process_frame
+	_expect(game.evolin.surprise > 0.0, "Misturar aciona a reação de surpresa")
 	_expect("Cristal+Folha" in care.discoveries, "A receita é descoberta pelo menu")
 	_expect(care.coins == balance + 14, "A primeira descoberta concede moedas")
 	var save := ConfigFile.new()

@@ -1,6 +1,7 @@
 extends Control
 
 const Care = preload("res://scripts/needs/care.gd")
+const MOTION = preload("res://scripts/ui/bath_motion.gdshader")
 const REFERENCE = preload("res://assets/textures/bath/banho.jpg")
 const ATLAS = preload("res://assets/textures/bath/atlas.jpg")
 const DESIGN := Vector2(720, 1280)
@@ -22,6 +23,8 @@ const STAT_NAMES := ["Fome", "Higiene", "Energia", "Felicidade"]
 var hud: CanvasLayer
 var care: Care
 var portrait: TextureRect
+var movement := ShaderMaterial.new()
+var reaction: Tween
 var xp: ProgressBar
 var coins: Label
 var level: Label
@@ -49,6 +52,8 @@ func setup(owner_hud: CanvasLayer, profile: Care) -> void:
 	size = DESIGN
 	theme = hud.safe.theme
 	portrait = _texture(self, REFERENCE, Rect2(Vector2.ZERO, DESIGN))
+	movement.shader = MOTION
+	portrait.material = movement
 	for region: Rect2i in TOOL_SPRITES:
 		assets.append(_cutout(region))
 	bubble_art = _cutout(BUBBLE)
@@ -129,6 +134,9 @@ func open() -> void:
 
 func close() -> void:
 	hide()
+	if reaction and reaction.is_running():
+		reaction.kill()
+	movement.set_shader_parameter("response", 0.0)
 	_end_drag()
 	warning.hide()
 	for effect in effects.get_children():
@@ -206,12 +214,14 @@ func scrub(at: Vector2) -> void:
 		for effect in effects.get_children():
 			if effect != ghost:
 				effect.queue_free()
+		_splash(0.30)
 		_notice("Toalha · espuma removida.")
 		return
 	if care.needs["Higiene"] >= 99.0:
 		_notice("Evolin já está limpinho!")
 		return
 	progress += 1
+	_splash(1.0 if progress == 10 else 0.60)
 	_spawn(at)
 	hud.play_sound(&"bolha")
 	if progress == 10:
@@ -221,6 +231,13 @@ func scrub(at: Vector2) -> void:
 		_notice("Banho completo! Evolin está limpinho.")
 	else:
 		_notice("Banho · %d%%" % (progress * 10))
+
+func _splash(amount: float) -> void:
+	if reaction and reaction.is_running():
+		reaction.kill()
+	movement.set_shader_parameter("response", amount)
+	reaction = create_tween()
+	reaction.tween_property(movement, "shader_parameter/response", 0.0, 0.40).set_ease(Tween.EASE_OUT)
 
 func _spawn(at: Vector2) -> void:
 	var art := foam_art if selected == 1 else bubble_art

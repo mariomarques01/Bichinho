@@ -13,6 +13,7 @@ const PET_LAYER := 2
 var care := Care.new()
 var sounds := Sounds.new()
 var was_sleeping := false
+var next_dream := 0.0
 var pointer_at := Vector2.ZERO
 var last_sample := Vector2.ZERO
 var sample_pending := false
@@ -30,6 +31,21 @@ func _ready() -> void:
 	_refresh_rest()
 	evolin.reacted.connect(hud.show_reaction)
 	hud.pet_requested.connect(_pet)
+	hud.ingredient_selected.connect(func() -> void:
+		if not evolin.sleeping:
+			evolin.inspect_ingredient()
+	)
+	hud.mixture_ready.connect(func() -> void:
+		if not evolin.sleeping:
+			evolin.discover()
+			hud.spark(room.camera.unproject_position(evolin.heart_origin.global_position))
+	)
+	hud.play_pair.connect(func(final_pair: bool) -> void:
+		if not evolin.sleeping:
+			evolin.celebrate_pair(final_pair)
+			if final_pair:
+				hud.spark(room.camera.unproject_position(evolin.heart_origin.global_position))
+	)
 	hud.food_eaten.connect(func() -> void:
 		sounds.play(&"mordida")
 		evolin.eat()
@@ -46,6 +62,7 @@ func _ready() -> void:
 	)
 
 func _activity_changed(index: int) -> void:
+	evolin.set_activity(index)
 	room.set_feeding(index == 0)
 	if index in [-1, 1]:
 		room.camera.cull_mask = 0
@@ -58,11 +75,23 @@ func _food_drop(food: String, at: Vector2) -> void:
 func _refresh_rest() -> void:
 	var sleeping := care.rest_end > 0
 	evolin.sleeping = sleeping
+	hud.home.sleeping = sleeping
 	hud.lamp_button.disabled = sleeping
 	if sleeping != was_sleeping:
+		next_dream = 0.0
 		if room.night != sleeping:
 			hud.set_night(room.toggle_lamp())
 		was_sleeping = sleeping
+
+func _process(delta: float) -> void:
+	if not evolin.sleeping or hud.menu.mode not in [-1, 2]:
+		return
+	next_dream -= delta
+	if next_dream > 0.0:
+		return
+	next_dream = 1.26
+	var at := hud.home.heart_point() if hud.menu.mode == -1 else room.camera.unproject_position(evolin.heart_origin.global_position - Vector3(0, 0.35, 0))
+	hud.dream(at)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if hud.menu.mode in [0, 1]:
