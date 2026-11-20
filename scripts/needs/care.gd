@@ -2,6 +2,7 @@ extends Node
 
 signal changed
 
+const SAVE_VERSION := 1
 const FOODS := {"Maçã": 15, "Banana": 20, "Frutas vermelhas": 12, "Sanduíche": 35, "Biscoito": 10}
 const DECAY := {"Fome": 0.12, "Higiene": 0.08, "Energia": 0.10, "Felicidade": 0.07}
 var save_path := "user://care-v1.cfg"
@@ -17,6 +18,8 @@ var discoveries: Array[String] = []
 func _ready() -> void:
 	var file := ConfigFile.new()
 	if file.load(save_path) == OK:
+		if int(file.get_value("care", "version", 0)) < SAVE_VERSION:
+			_migrate_save(file)
 		for key: String in needs:
 			needs[key] = clampf(float(file.get_value("needs", key, needs[key])), 0, 100)
 		for key: String in stock:
@@ -34,6 +37,9 @@ func _ready() -> void:
 	timer.timeout.connect(func() -> void: advance(now()))
 	add_child(timer)
 
+func _migrate_save(_file: ConfigFile) -> void:
+	pass
+
 func now() -> int:
 	return int(Time.get_unix_time_from_system())
 
@@ -44,28 +50,34 @@ func advance(at: int) -> void:
 		return
 	var sleeping := maxi(0, mini(at, rest_end) - last_update)
 	var elapsed := minf((at - last_update) / 60.0, 360.0)
+	var visible_change := false
 	for key: String in needs:
+		var before := roundi(needs[key])
 		if key == "Energia":
 			_adjust(key, sleeping / 60.0 * 0.75)
 			_adjust(key, -minf((at - last_update - sleeping) / 60.0, 360.0) * DECAY[key])
 		else:
 			_adjust(key, -elapsed * DECAY[key])
+		if roundi(needs[key]) != before:
+			visible_change = true
 	last_update = at
 	if rest_end > 0 and at >= rest_end:
 		rest_end = 0
 		_save()
-	changed.emit()
+		visible_change = true
+	if visible_change:
+		changed.emit()
 
 func _adjust(key: String, amount: float) -> void:
 	needs[key] = clampf(float(needs[key]) + amount, 0.0, 100.0)
 
 func feed(food: String) -> String:
-	if rest_end > 0:
-		return "Evolin está descansando."
 	if not FOODS.has(food):
 		return ""
 	if stock[food] <= 0:
-		return buy(food)
+		return "Sem estoque"
+	if rest_end > 0:
+		return "Evolin está descansando."
 	if needs["Fome"] >= 99.0:
 		return "Evolin já está de barriga cheia."
 	stock[food] -= 1
@@ -144,6 +156,7 @@ func _save() -> void:
 		file.set_value("needs", key, needs[key])
 	for key: String in stock:
 		file.set_value("stock", key, stock[key])
+	file.set_value("care", "version", SAVE_VERSION)
 	file.set_value("care", "coins", coins)
 	file.set_value("care", "xp", xp)
 	file.set_value("care", "rest_end", rest_end)

@@ -338,9 +338,6 @@ func _cancel_drag() -> void:
 func serve(food: String, at: Vector2) -> void:
 	if not visible or shopping or animating or not cards.has(food):
 		return
-	if care.stock[food] == 0:
-		message.text = "Esse alimento acabou."
-		return
 	var before: int = care.stock[food]
 	message.text = _food_message(food, care.feed(food))
 	if care.stock[food] >= before:

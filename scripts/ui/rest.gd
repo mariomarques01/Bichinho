@@ -29,6 +29,7 @@ var selected_outline: Panel
 var plain_pillow: Panel
 var panel: Panel
 var countdown: Label
+var countdown_second := 0
 var timer_label: Label
 var duration_buttons: Array[Button] = []
 var wake_button: Button
@@ -126,10 +127,7 @@ func _start(minutes: int) -> void:
 func refresh() -> void:
 	super.refresh()
 	var active := care.rest_end > 0
-	var remaining := maxi(0, care.rest_end - care.now())
-	var duration := "%02d:%02d:%02d" % [remaining / 3600, remaining / 60 % 60, remaining % 60]
-	countdown.text = "Acorda em " + duration if active else "Quanto tempo o Evolin vai descansar?"
-	timer_label.text = "Descansando · " + duration if active else ""
+	_refresh_countdown(active)
 	for button in duration_buttons:
 		button.visible = not active
 	wake_button.visible = active
@@ -140,6 +138,17 @@ func refresh() -> void:
 		rest_transition = create_tween().set_trans(Tween.TRANS_SINE)
 		var previous: float = motion.get_shader_parameter("sleeping")
 		rest_transition.tween_method(_set_sleeping, previous, 1.0 if active else 0.0, 0.55)
+
+func _process(_delta: float) -> void:
+	if is_visible_in_tree() and resting and care.now() != countdown_second:
+		_refresh_countdown(true)
+
+func _refresh_countdown(active: bool) -> void:
+	countdown_second = care.now()
+	var remaining := maxi(0, care.rest_end - countdown_second)
+	var duration := "%02d:%02d:%02d" % [remaining / 3600, remaining / 60 % 60, remaining % 60]
+	countdown.text = "Acorda em " + duration if active else "Quanto tempo o Evolin vai descansar?"
+	timer_label.text = "Descansando · " + duration if active else ""
 
 func _set_sleeping(amount: float) -> void:
 	motion.set_shader_parameter("sleeping", amount)
