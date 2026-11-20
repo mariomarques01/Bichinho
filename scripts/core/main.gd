@@ -24,6 +24,10 @@ func _ready() -> void:
 	add_child(sounds)
 	hud.sound_requested.connect(sounds.play)
 	hud.bind_care(care)
+	hud.home.evolin = evolin
+	hud.feeding.evolin = evolin
+	care.changed.connect(evolin.set_mood.bind(care.needs))
+	evolin.set_mood(care.needs)
 	hud.activity_changed.connect(_activity_changed)
 	_activity_changed(-1)
 	hud.food_drop.connect(_food_drop)

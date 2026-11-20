@@ -59,10 +59,21 @@ func _run() -> void:
 	evolin._update_eyelids(0.12)
 	_expect(evolin.face.material_overlay == evolin.eyelids, "Evolin pisca sozinho")
 	evolin._update_eyelids(0.13)
-	_expect(evolin.face.material_overlay == null, "Olhos reabrem após a piscada")
+	_expect(float(evolin.eyelids.get_shader_parameter("closure")) < 0.01, "Olhos reabrem após a piscada")
 	evolin.time = 0.4
 	evolin._process(0.0)
 	_expect(evolin.tail_bone >= 0 and not evolin.skeleton.get_bone_pose_rotation(evolin.tail_bone).is_equal_approx(evolin.tail_rest), "O osso da cauda reage à animação")
+	var original: Dictionary = game.care.needs.duplicate()
+	for pair in [["Energia", evolin.Mood.SONOLENTO], ["Higiene", evolin.Mood.SUJO], ["Fome", evolin.Mood.FAMINTO]]:
+		game.care.needs[pair[0]] = 18.0
+		game.care.changed.emit()
+		_expect(evolin.mood == pair[1], "A necessidade %s muda a expressão" % pair[0])
+		game.care.needs[pair[0]] = original[pair[0]]
+	game.care.changed.emit()
+	_expect(evolin.mood == evolin.Mood.FELIZ, "Recuperar as necessidades restaura o sorriso")
+	evolin.idle_wait = 0.0
+	evolin._update_idle(0.4)
+	_expect(evolin.idle_wait >= 6.0 and evolin.idle_wait <= 12.0 and absf(evolin.look) + evolin.stretch > 0.0, "Idle varia a pose e agenda outro gesto")
 	await _test_care(game, hud)
 	_expect(game.sounds.players[&"mordida"].stream.get_length() > 0.0, "Áudio da mordida é carregado")
 	game.hud.play_sound(&"toque")

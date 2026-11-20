@@ -1,6 +1,8 @@
 shader_type canvas_item;
 
 uniform float closure : hint_range(0.0, 1.0) = 0.0;
+uniform float mouth_shape = 0.0;
+uniform vec2 mouth_center;
 uniform vec4 left_eye;
 uniform vec4 right_eye;
 uniform vec4 lid_color : source_color = vec4(0.18, 0.77, 0.79, 1.0);
@@ -16,8 +18,17 @@ vec2 paint_lid(vec2 pixel, vec4 eye) {
 	return vec2(cover, lash);
 }
 
+varying vec4 tint;
+
+void vertex() {
+	tint = COLOR;
+}
+
 void fragment() {
-	vec4 base = COLOR;
+	vec2 offset = UV - mouth_center;
+	float mask = 1.0 - smoothstep(0.5, 1.0, length(offset / vec2(0.15, 0.11)));
+	vec2 warp = vec2(offset.x * min(mouth_shape, 0.0) * 0.32, -offset.y * max(mouth_shape, 0.0) * 0.58);
+	vec4 base = texture(TEXTURE, UV + warp * mask) * tint;
 	if (closure > 0.0 && base.a > 0.0) {
 		vec2 left = paint_lid(UV, left_eye);
 		vec2 right = paint_lid(UV, right_eye);

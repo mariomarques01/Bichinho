@@ -1,5 +1,7 @@
 extends Control
 
+const Evolin = preload("res://scripts/pet/evolin.gd")
+
 const Action = preload("res://scripts/ui/home_action.gd")
 const SHARPEN = preload("res://scripts/ui/home_sharpen.gdshader")
 const Blink = preload("res://scripts/pet/blink.gd")
@@ -37,6 +39,7 @@ var action_buttons: Array[Action] = []
 var sharpen := ShaderMaterial.new()
 var reaction: Tween
 var idle_clock := 0.0
+var evolin: Evolin
 var eyelids := ShaderMaterial.new()
 var sleeping := false
 
@@ -58,10 +61,8 @@ func _process(delta: float) -> void:
 	if not visible or (reaction and reaction.is_running()):
 		return
 	idle_clock += delta
-	eyelids.set_shader_parameter("closure", 1.0 if sleeping else Blink.closure(idle_clock))
 	var breath := sin(idle_clock * (1.65 if sleeping else 2.75))
-	character.scale = Vector2(1.0 - breath * 0.012, 1.0 + breath * 0.022)
-	character.rotation = sin(idle_clock * 1.45) * 0.020
+	evolin.pose_sprite(character, Blink.closure(idle_clock), Vector2(1.0 - breath * 0.012, 1.0 + breath * 0.022), sin(idle_clock * 1.45) * 0.020)
 
 func _frame() -> void:
 	scale = get_parent().size / DESIGN
@@ -93,6 +94,7 @@ func _build_room() -> void:
 	_picture(shade_texture, Rect2(143, 765, 296, 63))
 	character = _picture(_cutout(PET), PET_RECT)
 	eyelids.shader = SPRITE_BLINK
+	eyelids.set_shader_parameter("mouth_center", Vector2(0.49, 0.55))
 	eyelids.set_shader_parameter("left_eye", Vector4(0.341, 0.419, 0.111, 0.087))
 	eyelids.set_shader_parameter("right_eye", Vector4(0.652, 0.419, 0.111, 0.087))
 	eyelids.set_shader_parameter("lid_color", Color("#2ad1d1"))
