@@ -29,6 +29,7 @@ var night_tint := Color.WHITE
 var xp_bar: ProgressBar
 var level: Label
 var xp_reading: Label
+var coin_icon: TextureRect
 var coins: Label
 var stat_readings: Array[Label] = []
 var stat_bars: Array[ProgressBar] = []
@@ -106,6 +107,7 @@ func _build_profile() -> void:
 	level = _value(Rect2(143, 69, 130, 32), 23, HORIZONTAL_ALIGNMENT_LEFT)
 	xp_reading = _value(Rect2(309, 69, 139, 30), 22)
 	xp_bar = _meter(Rect2(144, 101, 298, 22), Color("#ee38e7"), Color("#583575"))
+	coin_icon = _picture(hud.feeding.coin_icon.texture, Rect2(494, 55, 56, 56))
 	coins = _value(Rect2(552, 67, 79, 34), 27)
 	_hit("Loja de alimentos", Rect2(638, 48, 61, 71)).pressed.connect(_open_store)
 	for index in STAT_RECTS.size():
@@ -149,14 +151,9 @@ func set_night(night: bool) -> void:
 	character.modulate = night_tint
 
 func refresh() -> void:
-	level.text = "Nível %d" % (1 + care.xp / 50)
-	xp_reading.text = "%d/50 XP" % (care.xp % 50)
-	xp_bar.value = float(care.xp % 50) * 2.0
-	coins.text = str(care.coins)
 	for index in STAT_KEYS.size():
 		var value: float = care.needs[STAT_KEYS[index]]
 		stat_readings[index].text = "%d%%" % roundi(value)
-		stat_bars[index].value = value
 
 func hit_pet(point: Vector2) -> bool:
 	var local := get_global_transform_with_canvas().affine_inverse() * point

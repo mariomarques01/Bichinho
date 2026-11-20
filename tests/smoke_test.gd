@@ -2,6 +2,7 @@ extends SceneTree
 
 const Main = preload("res://scenes/main/main.tscn")
 var failures := 0
+var checks := 0
 
 func _initialize() -> void:
 	call_deferred("_run")
@@ -73,7 +74,7 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 	if failures == 0:
-		print("EVO: 43 verificações passaram.")
+		print("EVO: %d verificações passaram." % checks)
 	quit(1 if failures > 0 else 0)
 
 func _test_care(game: Node3D, hud: CanvasLayer) -> void:
@@ -88,9 +89,9 @@ func _test_care(game: Node3D, hud: CanvasLayer) -> void:
 	_expect(float(hud.feeding.eyelids.get_shader_parameter("closure")) > 0.95, "Alimentar pisca antes de receber comida")
 	var drop: Vector2 = hud.feeding.character.get_global_rect().get_center()
 	hud.request_food_drop("Maçã", drop)
-	await process_frame
+	await create_timer(0.32).timeout
 	_expect(care.stock["Maçã"] == 1 and hud.feeding.stats["Fome"][1].value == 65, "Alimentação consome um item e atualiza o HUD")
-	await create_timer(0.50).timeout
+	await create_timer(0.18).timeout
 	_expect(hud.feeding.character.texture == hud.feeding.eating_pose, "Soltar o alimento inicia a animação de comer")
 	await create_timer(0.62).timeout
 	hud.request_food_drop("Maçã", Vector2(4, 4))
@@ -144,7 +145,17 @@ func _test_care(game: Node3D, hud: CanvasLayer) -> void:
 		hud.menu.card_buttons[second].pressed.emit()
 	_expect(care.coins == balance + 8, "Concluir o jogo da memória concede moedas")
 	_expect(game.evolin.reaction.is_running(), "O último par aciona a comemoração")
-	await process_frame
+	var rewards: Array[Label] = []
+	for child in hud.get_node("Interface").get_children():
+		if child is Label and child.text in ["+12 XP", "+8 moedas"]:
+			rewards.append(child)
+	_expect(rewards.size() == 2, "Ganhos simultâneos mostram XP e moedas")
+	await create_timer(0.10).timeout
+	_expect(hud.coin_icon.scale.x > 1.0 and int(hud.home.coins.text) < care.coins, "A moeda cresce enquanto o saldo sobe")
+	await create_timer(0.75).timeout
+	_expect(hud.coin_icon.scale.is_equal_approx(Vector2.ONE) and int(hud.home.coins.text) == care.coins, "Ícone e saldo terminam a animação")
+	for reward in rewards:
+		_expect(not is_instance_valid(reward), "O número flutuante desaparece")
 	hud.tabs[5].pressed.emit()
 	var ingredients: GridContainer = hud.activity.get_child(2)
 	ingredients.get_child(0).button_pressed = true
@@ -182,6 +193,7 @@ func _hearts(hud: CanvasLayer) -> int:
 	return count
 
 func _expect(condition: bool, check: String) -> void:
+	checks += 1
 	if not condition:
 		failures += 1
 		push_error(check)

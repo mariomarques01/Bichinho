@@ -38,6 +38,7 @@ var cards: Dictionary = {}
 var counts: Dictionary = {}
 var art: Dictionary = {}
 var profile: Label
+var coin_icon: TextureRect
 var wallet: Label
 var stats: Dictionary = {}
 var message: Label
@@ -122,7 +123,7 @@ func _build() -> void:
 	var balance := HBoxContainer.new()
 	balance.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	purse.add_child(balance)
-	_icon(balance, _round_icon(COIN_ICON), Vector2(69, 69))
+	coin_icon = _icon(balance, _round_icon(COIN_ICON), Vector2(69, 69))
 	wallet = _label(balance, "", 33)
 	wallet.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 
@@ -272,11 +273,8 @@ func _process(delta: float) -> void:
 	character.scale = Vector2(1.0 - breath * 0.008, 1.0 + breath * 0.018)
 
 func refresh() -> void:
-	profile.text = "Nível %d   ·   %d/50 XP" % [1 + care.xp / 50, care.xp % 50]
-	wallet.text = str(care.coins)
 	for key: String in stats:
 		stats[key][0].text = "%d%%" % roundi(care.needs[key])
-		stats[key][1].value = care.needs[key]
 	food_detail.text = "%s  ·  %s" % [FOOD_NAMES.get(selected, selected), "5 moedas" if shopping else "+%d de saciedade" % Care.FOODS[selected]]
 	for food: String in cards:
 		counts[food].text = "×%d" % care.stock[food]

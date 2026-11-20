@@ -29,6 +29,8 @@ var feedback_time: Timer
 var activity: VBoxContainer
 var activity_card: PanelContainer
 var menu := Activities.new()
+var animation := preload("res://scripts/ui/hud_animation.gd").new()
+var coin_icon: TextureRect
 var profile: Label
 var bars: Dictionary = {}
 var values: Dictionary = {}
@@ -40,6 +42,7 @@ func bind_care(care: Node) -> void:
 	feeding = Feeding.new()
 	$Interface.add_child(feeding)
 	feeding.setup(self, care)
+	coin_icon.texture = feeding.coin_icon.texture
 	_update_safe_area()
 	feeding.close()
 	bath = Bath.new()
@@ -57,14 +60,52 @@ func bind_care(care: Node) -> void:
 
 func _refresh() -> void:
 	var care := menu.care
-	profile.text = "Nível %d  ·  %d/50 XP  ·  %d moedas" % [1 + care.xp / 50, care.xp % 50, care.coins]
+	var previous_xp := int(animation.targets.get("xp", care.xp))
+	var previous_coins := int(animation.targets.get("coins", care.coins))
 	for key: String in bars:
-		bars[key].value = care.needs[key]
-		values[key].text = "%s  %d%%" % [key, roundi(care.needs[key])]
+		animation.update(self, key, care.needs[key], _draw_need.bind(key))
+	animation.update(self, "xp", care.xp, _draw_profile)
+	animation.update(self, "coins", care.coins, _draw_profile)
+	var active: Control = safe
+	for screen: Control in [home, feeding, bath, rest]:
+		if screen.is_visible_in_tree():
+			active = screen
+			break
+	var icon: Control = coin_icon if active == safe else active.coin_icon
+	var anchor := icon.get_global_rect().get_center()
+	var y := maxf(anchor.y + 100.0, 145.0)
+	if care.xp > previous_xp:
+		_float_effect(Vector2(get_viewport().get_visible_rect().size.x * 0.24, y), "+%d XP" % (care.xp - previous_xp), Color("#ffb8ff"), 0.8, 36)
+	if care.coins > previous_coins:
+		animation.pop(icon)
+		_float_effect(Vector2(anchor.x, y), "+%d moedas" % (care.coins - previous_coins), Color("#ffdf90"), 0.8, 36)
 	feeding.refresh()
 	bath.refresh()
 	rest.refresh()
 	home.refresh()
+
+func _draw_need(key: String) -> void:
+	var index := Home.STAT_KEYS.find(key)
+	var value := float(animation.shown[key])
+	for bar: ProgressBar in [bars[key], home.stat_bars[index], feeding.stats[key][1], bath.meters[index], rest.meters[index]]:
+		bar.value = value
+	values[key].text = "%s  %d%%" % [key, roundi(menu.care.needs[key])]
+
+func _draw_profile() -> void:
+	var shown_xp := float(animation.shown.get("xp", menu.care.xp))
+	var xp := floori(shown_xp)
+	var coins := roundi(animation.shown.get("coins", menu.care.coins))
+	var level := "Nível %d" % (1 + xp / 50)
+	var progress := "%d/50 XP" % (xp % 50)
+	profile.text = "%s  ·  %s  ·  %d moedas" % [level, progress, coins]
+	feeding.profile.text = "%s   ·   %s" % [level, progress]
+	home.xp_reading.text = progress
+	for label: Label in [home.level, bath.level, rest.level]:
+		label.text = level
+	for bar: ProgressBar in [home.xp_bar, bath.xp, rest.xp]:
+		bar.value = fmod(shown_xp, 50.0) * 2.0
+	for label: Label in [home.coins, feeding.wallet, bath.coins, rest.coins]:
+		label.text = str(coins)
 
 func play_sound(key: StringName) -> void:
 	sound_requested.emit(key)
@@ -137,7 +178,15 @@ func _build() -> void:
 	identity.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	title_card.add_child(identity)
 	_label(identity, "EVO  /  Evolin", 46).add_theme_color_override("font_color", Color("#91efce"))
-	profile = _label(identity, "", 32)
+	var account := HBoxContainer.new()
+	identity.add_child(account)
+	coin_icon = TextureRect.new()
+	coin_icon.custom_minimum_size = Vector2(36, 36)
+	coin_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	coin_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	coin_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	account.add_child(coin_icon)
+	profile = _label(account, "", 32)
 	lamp_button = _button(header, "Anoitecer", Color("#594678"))
 	lamp_button.size_flags_horizontal = Control.SIZE_SHRINK_END
 	lamp_button.pressed.connect(func() -> void:
@@ -208,15 +257,15 @@ func dream(at: Vector2) -> void:
 func spark(at: Vector2) -> void:
 	_float_effect(at, "✦", Color("#ffdf90"))
 
-func _float_effect(at: Vector2, symbol: String, color: Color) -> void:
-	var mark := _label($Interface, symbol, 84)
+func _float_effect(at: Vector2, symbol: String, color: Color, duration := 0.58, font_size := 84) -> void:
+	var mark := _label($Interface, symbol, font_size)
 	mark.add_theme_color_override("font_color", color)
 	mark.add_theme_color_override("font_outline_color", Color("#70385f"))
 	mark.add_theme_constant_override("outline_size", 8)
 	mark.position = at - Vector2(31, 63)
 	var flight := mark.create_tween().set_parallel()
-	flight.tween_property(mark, "position:y", mark.position.y - 132.0, 0.58).set_ease(Tween.EASE_OUT)
-	flight.tween_property(mark, "modulate:a", 0.0, 0.37).set_delay(0.21)
+	flight.tween_property(mark, "position:y", mark.position.y - 132.0, duration).set_ease(Tween.EASE_OUT)
+	flight.tween_property(mark, "modulate:a", 0.0, duration - 0.21).set_delay(0.21)
 	flight.chain().tween_callback(mark.queue_free)
 
 func _label(parent: Node, words: String, size: int) -> Label:

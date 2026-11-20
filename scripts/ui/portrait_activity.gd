@@ -9,6 +9,7 @@ var hud: CanvasLayer
 var care: Care
 var portrait: TextureRect
 var xp: ProgressBar
+var coin_icon: TextureRect
 var coins: Label
 var level: Label
 var readings: Array[Label] = []
@@ -42,6 +43,7 @@ func _build_profile() -> void:
 	var deep := Color("#171531")
 	level = _value(Rect2(109, 42, 130, 24), 18, deep)
 	level.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	coin_icon = _texture(self, hud.feeding.coin_icon.texture, Rect2(340, 15, 40, 40))
 	coins = _value(Rect2(383, 20, 78, 34), 24, deep)
 	_value(Rect2(584, 20, 68, 34), 24, deep).text = "0"
 	xp = _bar(Rect2(113, 68, 184, 15), Color("#c541ea"), Color("#14465a"))
@@ -51,13 +53,9 @@ func _build_profile() -> void:
 		meters.append(_bar(Rect2(x - 2, 162, 94, 17), Color("#95e825"), Color("#153d2c")))
 
 func refresh() -> void:
-	level.text = "Nível %d" % (1 + care.xp / 50)
-	coins.text = str(care.coins)
-	xp.value = float(care.xp % 50) * 2
 	for index in STAT_NAMES.size():
 		var value: float = care.needs[STAT_NAMES[index]]
 		readings[index].text = "%d%%" % roundi(value)
-		meters[index].value = value
 
 func _open_store() -> void:
 	hud._open(0)
