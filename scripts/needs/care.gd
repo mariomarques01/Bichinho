@@ -2,7 +2,7 @@ extends Node
 
 signal changed
 
-const SAVE_VERSION := 3
+const SAVE_VERSION := 4
 const CORRUPT_MESSAGE := "Save corrompido, progresso anterior não recuperado"
 var startup_message := ""
 var primary_valid := false
@@ -18,6 +18,7 @@ var stock := {"Maçã": 3, "Banana": 2, "Frutas vermelhas": 2, "Sanduíche": 1, 
 var sick := false
 var low_seconds := {"Fome": 0.0, "Higiene": 0.0}
 var coins := 30
+var pula_record := 0
 var xp := 0
 var bonus_day := -1
 var daily_wins := 0
@@ -53,6 +54,7 @@ func _ready() -> void:
 		coins = maxi(0, int(file.get_value("care", "coins", coins)))
 		bonus_day = int(file.get_value("care", "bonus_day", -1))
 		daily_wins = clampi(int(file.get_value("care", "daily_wins", 0)), 0, 3)
+		pula_record = maxi(0, int(file.get_value("care", "pula_record", 0)))
 		xp = maxi(0, int(file.get_value("care", "xp", xp)))
 		rest_end = int(file.get_value("care", "rest_end", 0))
 		last_update = int(file.get_value("care", "last_update", 0))
@@ -235,7 +237,7 @@ func _gain_xp(amount: int) -> void:
 	for level in range(previous + 1, level_progress(xp).x + 1):
 		coins += level * 10
 
-func played(score: int) -> int:
+func played(score: int, daily_bonus := true) -> int:
 	if sick or score <= 0:
 		return 0
 	var day := _local_day(now())
@@ -243,7 +245,7 @@ func played(score: int) -> int:
 		bonus_day = day
 		daily_wins = 0
 	var reward := clampi(score, 1, 6)
-	if day == bonus_day and daily_wins < 3:
+	if daily_bonus and day == bonus_day and daily_wins < 3:
 		reward += 2
 		daily_wins += 1
 	coins += reward
@@ -288,6 +290,7 @@ func _save() -> void:
 	file.set_value("care", "version", SAVE_VERSION)
 	file.set_value("care", "coins", coins)
 	file.set_value("care", "xp", xp)
+	file.set_value("care", "pula_record", pula_record)
 	file.set_value("care", "bonus_day", bonus_day)
 	file.set_value("care", "daily_wins", daily_wins)
 	file.set_value("care", "rest_end", rest_end)
