@@ -2,7 +2,7 @@ extends Node
 
 signal changed
 
-const SAVE_VERSION := 1
+const SAVE_VERSION := 2
 const FOODS := {"Maçã": 15, "Banana": 20, "Frutas vermelhas": 12, "Sanduíche": 35, "Biscoito": 10}
 const MEDICINE := "Remédio"
 const SICK_MESSAGE := "Evolin está doente. Use um remédio para voltar a brincar."
@@ -23,9 +23,11 @@ var discoveries: Array[String] = []
 
 func _ready() -> void:
 	var file := ConfigFile.new()
+	var migrated := false
 	if file.load(save_path) == OK:
 		if int(file.get_value("care", "version", 0)) < SAVE_VERSION:
 			_migrate_save(file)
+			migrated = true
 		for key: String in needs:
 			needs[key] = clampf(float(file.get_value("needs", key, needs[key])), 0, 100)
 		for key: String in stock:
@@ -42,14 +44,25 @@ func _ready() -> void:
 		last_affection = int(file.get_value("care", "last_affection", 0))
 		discoveries.assign(file.get_value("care", "discoveries", []))
 	advance(now())
+	if migrated:
+		_save()
 	var timer := Timer.new()
 	timer.wait_time = 1.0
 	timer.autostart = true
 	timer.timeout.connect(func() -> void: advance(now()))
 	add_child(timer)
 
-func _migrate_save(_file: ConfigFile) -> void:
-	pass
+func _migrate_save(file: ConfigFile) -> void:
+	var utc_day := int(file.get_value("care", "bonus_day", -1))
+	if utc_day >= 0:
+		# V1 stored the UTC day but omitted the exact time of the win.
+		var day_start := utc_day * 86400
+		var saved_at := int(file.get_value("care", "last_update", now()))
+		var estimate := clampi(saved_at, day_start, day_start + 86399)
+		file.set_value("care", "bonus_day", _local_day(estimate))
+
+func _local_day(timestamp: int, bias_minutes: int = Time.get_time_zone_from_system().bias) -> int:
+	return (timestamp + bias_minutes * 60) / 86400
 
 func now() -> int:
 	return int(Time.get_unix_time_from_system())
@@ -69,9 +82,10 @@ func advance(at: int) -> void:
 		var before_low := float(low_seconds[key])
 		var until_low := maxf(0.0, (float(needs[key]) - 15.0) * 60.0 / float(DECAY[key]))
 		if needs[key] - elapsed * DECAY[key] < 15.0:
-			low_seconds[key] = before_low + duration - snappedf(until_low, 0.000001)
+			var exposure_start := maxf(sleeping, snappedf(until_low, 0.000001))
+			low_seconds[key] = before_low + duration - exposure_start
 			if low_seconds[key] > 1800.0:
-				onset = minf(onset, until_low + maxf(0.0, 1800.0 - before_low))
+				onset = minf(onset, exposure_start + maxf(0.0, 1800.0 - before_low))
 				sick = true
 		else:
 			low_seconds[key] = 0.0
@@ -193,7 +207,7 @@ func _gain_xp(amount: int) -> void:
 func played(score: int) -> int:
 	if sick or score <= 0:
 		return 0
-	var day := now() / 86400
+	var day := _local_day(now())
 	if day > bonus_day:
 		bonus_day = day
 		daily_wins = 0

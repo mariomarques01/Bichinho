@@ -97,6 +97,7 @@ func _run() -> void:
 	await _test_care(game, hud)
 	_test_sickness(game, hud)
 	_test_rewards(game, hud)
+	_test_local_day_and_sleep(game.care)
 	_expect(game.sounds.players[&"mordida"].stream.get_length() > 0.0, "Áudio da mordida é carregado")
 	game.hud.play_sound(&"toque")
 	_expect(game.sounds.players[&"toque"].playing, "O HUD aciona o efeito de navegação")
@@ -270,6 +271,37 @@ func _test_rewards(game: Node3D, hud: CanvasLayer) -> void:
 	loaded.bonus_day -= 1
 	_expect(loaded.played(3) == 5, "Um novo dia renova o bônus")
 	loaded.queue_free()
+
+func _test_local_day_and_sleep(profile: Node) -> void:
+	var care = profile.get_script().new()
+	var midnight := 20000 * 86400
+	_expect(care._local_day(midnight + 10799, -180) == 19999 and care._local_day(midnight + 10800, -180) == 20000, "Bônus vira à meia-noite local em UTC−3")
+	_expect(care._local_day(midnight - 19801, 330) == 19999 and care._local_day(midnight - 19800, 330) == 20000, "Bônus considera fusos positivos com meia hora")
+	care.save_path = profile.save_path + ".v1"
+	var old := ConfigFile.new()
+	var stamp: int = care.now()
+	old.set_value("care", "version", 1)
+	old.set_value("care", "last_update", stamp)
+	old.set_value("care", "bonus_day", stamp / 86400)
+	old.set_value("care", "daily_wins", 3)
+	old.save(care.save_path)
+	root.add_child(care)
+	var migrated := ConfigFile.new()
+	migrated.load(care.save_path)
+	_expect(migrated.get_value("care", "version") == 2 and migrated.get_value("care", "bonus_day") == care._local_day(stamp) and care.played(1) == 1, "Save v1 migra sem repetir o bônus")
+	care.needs["Fome"] = 10.0
+	care.needs["Higiene"] = 16.0
+	care.low_seconds["Fome"] = 1750.0
+	care.rest_end = stamp + 3600
+	care.advance(stamp + 2400)
+	_expect(not care.sick and care.low_seconds["Fome"] == 1750 and care.low_seconds["Higiene"] == 0, "Sono pausa exposição anterior e ignora nova exposição")
+	_expect(is_equal_approx(care.needs["Fome"], 5.2) and is_equal_approx(care.needs["Higiene"], 12.8), "Fome e higiene continuam caindo durante o sono")
+	care.advance(stamp + 3650)
+	_expect(not care.sick and care.low_seconds["Fome"] == 1800 and care.low_seconds["Higiene"] == 50, "Avanço offline conta apenas os segundos após acordar")
+	care.advance(stamp + 3651)
+	_expect(care.sick, "Exposição continua após acordar e ultrapassar meia hora")
+	DirAccess.remove_absolute(care.save_path)
+	care.queue_free()
 
 func _click(at: Vector2) -> void:
 	_button_at(at, true)

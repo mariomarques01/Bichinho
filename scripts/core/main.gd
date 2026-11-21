@@ -18,6 +18,7 @@ var pointer_at := Vector2.ZERO
 var last_sample := Vector2.ZERO
 var sample_pending := false
 var ready_at := 0
+var read_motion_sensor := OS.get_name() in ["Android", "iOS"] and Input.has_method("get_accelerometer")
 var last_acceleration := Vector3.ZERO
 var shake_ready_at := 0
 
@@ -97,7 +98,7 @@ func _process(delta: float) -> void:
 	if hud.menu.mode != -1:
 		return
 	if not evolin.sleeping:
-		if OS.has_feature("mobile") and not OS.has_feature("web"):
+		if read_motion_sensor:
 			_sample_acceleration(Input.get_accelerometer())
 		return
 	next_dream -= delta
@@ -107,7 +108,10 @@ func _process(delta: float) -> void:
 	hud.dream(hud.home.heart_point())
 
 func _sample_acceleration(value: Vector3) -> void:
-	if not value.is_zero_approx() and not last_acceleration.is_zero_approx() and value.distance_to(last_acceleration) > 13.0:
+	if not value.is_finite() or value.is_zero_approx():
+		last_acceleration = Vector3.ZERO
+		return
+	if not last_acceleration.is_zero_approx() and value.distance_to(last_acceleration) > 13.0:
 		_shake()
 	last_acceleration = value
 
