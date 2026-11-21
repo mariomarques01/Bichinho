@@ -17,6 +17,12 @@ func _run() -> void:
 	var evolin: Node3D = game.get_node("Evolin")
 	var room: Node3D = game.get_node("Room")
 	var hud: CanvasLayer = game.get_node("HUD")
+	_expect(game.sounds.day.bus == &"Música" and game.sounds.players[&"carinho"].bus == &"Efeitos", "Música e efeitos usam buses separados")
+	_expect(game.sounds.day.stream.loop_mode == AudioStreamWAV.LOOP_FORWARD and game.sounds.night.stream.loop_mode == AudioStreamWAV.LOOP_FORWARD, "Dia e noite reproduzem em loop")
+	game.sounds.set_night(true)
+	game.sounds.fade.custom_step(1.0)
+	_expect(game.sounds.day.volume_linear < 0.001 and game.sounds.night.volume_linear > 0.6, "Crossfade ativa a ambiência noturna")
+	game.sounds.set_night(false)
 	var pulse: float = hud.home.idle_clock
 	await create_timer(0.12).timeout
 	_expect(hud.home.idle_clock > pulse, "Evolin respira no quarto")
@@ -45,7 +51,11 @@ func _run() -> void:
 	_button_at(head, true)
 	_drag(head + Vector2(55, 0))
 	_expect(hud.home.dragging and hud.home.character.position.x > old_position.x, "Arraste move o Evolin no quarto")
+	game._process(0.0)
+	_expect(Engine.max_fps == 60, "Arraste usa 60 FPS")
 	_button_at(head + Vector2(55, 0), false)
+	game._process(0.0)
+	_expect(Engine.max_fps == 30, "Soltar restaura 30 FPS")
 	_expect(not hud.home.holding and hud.home.reaction.is_running(), "Soltar inicia squash e stretch")
 	_expect(game.care.xp == before_drag_xp, "Arrastar respeita o intervalo de carinho")
 	hud.home.reaction.custom_step(0.10)
@@ -98,6 +108,7 @@ func _run() -> void:
 	_test_sickness(game, hud)
 	_test_rewards(game, hud)
 	_test_local_day_and_sleep(game.care)
+	_test_save_recovery(game.care)
 	_test_wardrobe(game, hud)
 	await _test_minigames(game.care, hud)
 	await _test_evolution()
@@ -106,7 +117,7 @@ func _run() -> void:
 	_expect(game.sounds.players[&"toque"].playing, "O HUD aciona o efeito de navegação")
 	for player: AudioStreamPlayer in game.sounds.players.values():
 		player.stop()
-	DirAccess.remove_absolute(game.care.save_path)
+	_clear_save(game.care.save_path)
 	game.queue_free()
 	await process_frame
 	await process_frame
@@ -305,7 +316,7 @@ func _test_evolution() -> void:
 		_expect(other.form == "Crepúsculo", "A forma adulta permanece no nível 11")
 	await create_timer(1.5).timeout
 
-	DirAccess.remove_absolute(care.save_path)
+	_clear_save(care.save_path)
 	game.queue_free()
 
 func _test_rewards(game: Node3D, hud: CanvasLayer) -> void:
@@ -329,6 +340,48 @@ func _test_rewards(game: Node3D, hud: CanvasLayer) -> void:
 	_expect(loaded.played(3) == 5, "Um novo dia renova o bônus")
 	loaded.queue_free()
 
+func _clear_save(path: String) -> void:
+	for suffix in ["", ".bak", ".tmp", ".bak.tmp"]:
+		if FileAccess.file_exists(path + suffix):
+			DirAccess.remove_absolute(path + suffix)
+
+func _test_save_recovery(profile: Node) -> void:
+	var path: String = profile.save_path + ".recovery"
+	var writer = profile.get_script().new()
+	writer.save_path = path
+	root.add_child(writer)
+	_expect(writer.startup_message == "", "Primeiro jogo inicia sem aviso")
+	writer.coins = 71
+	writer._save()
+	writer.coins = 89
+	writer._save()
+	writer.free()
+	# Even a truncation on a valid section boundary must be detected.
+	var truncated := FileAccess.get_file_as_string(path).get_slice("[integrity]", 0)
+	var output := FileAccess.open(path, FileAccess.WRITE)
+	output.store_string(truncated)
+	output.close()
+	var reader = profile.get_script().new()
+	reader.save_path = path
+	root.add_child(reader)
+	_expect(reader.coins == 71 and reader.startup_message == "", "Save truncado recupera a geração anterior")
+	reader.free()
+	DirAccess.remove_absolute(path + ".bak")
+	output = FileAccess.open(path, FileAccess.WRITE)
+	output.store_string(truncated)
+	output.close()
+	var fresh = profile.get_script().new()
+	fresh.save_path = path
+	root.add_child(fresh)
+	_expect(fresh.coins == 30 and fresh.xp == 0 and fresh.startup_message == fresh.CORRUPT_MESSAGE, "Sem backup o jogo inicia limpo e sinaliza a perda")
+	fresh.free()
+	var reopened = profile.get_script().new()
+	reopened.save_path = path
+	root.add_child(reopened)
+	_expect(reopened.startup_message == "", "Reabrir o novo save não repete o aviso")
+	reopened.free()
+	_clear_save(path)
+
 func _test_local_day_and_sleep(profile: Node) -> void:
 	var care = profile.get_script().new()
 	var midnight := 20000 * 86400
@@ -345,7 +398,7 @@ func _test_local_day_and_sleep(profile: Node) -> void:
 	root.add_child(care)
 	var migrated := ConfigFile.new()
 	migrated.load(care.save_path)
-	_expect(migrated.get_value("care", "version") == 2 and migrated.get_value("care", "bonus_day") == care._local_day(stamp) and care.played(1) == 1, "Save v1 migra sem repetir o bônus")
+	_expect(migrated.get_value("care", "version") == care.SAVE_VERSION and migrated.get_value("care", "bonus_day") == care._local_day(stamp) and care.played(1) == 1, "Save v1 migra sem repetir o bônus")
 	care.needs["Fome"] = 10.0
 	care.needs["Higiene"] = 16.0
 	care.low_seconds["Fome"] = 1750.0
@@ -357,7 +410,7 @@ func _test_local_day_and_sleep(profile: Node) -> void:
 	_expect(not care.sick and care.low_seconds["Fome"] == 1800 and care.low_seconds["Higiene"] == 50, "Avanço offline conta apenas os segundos após acordar")
 	care.advance(stamp + 3651)
 	_expect(care.sick, "Exposição continua após acordar e ultrapassar meia hora")
-	DirAccess.remove_absolute(care.save_path)
+	_clear_save(care.save_path)
 	care.queue_free()
 
 func _test_wardrobe(game: Node3D, hud: CanvasLayer) -> void:

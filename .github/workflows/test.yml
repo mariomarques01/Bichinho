@@ -1,0 +1,19 @@
+name: Testes Godot
+on: push
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instalar Godot 4.6.3
+        run: |
+          curl --fail --location --retry 3 https://github.com/godotengine/godot-builds/releases/download/4.6.3-stable/Godot_v4.6.3-stable_linux.x86_64.zip -o "$RUNNER_TEMP/godot.zip"
+          unzip -q "$RUNNER_TEMP/godot.zip" -d "$RUNNER_TEMP"
+          mv "$RUNNER_TEMP/Godot_v4.6.3-stable_linux.x86_64" "$RUNNER_TEMP/godot"
+      - name: Importar recursos
+        run: '"$RUNNER_TEMP/godot" --headless --editor --import'
+      - name: Executar smoke test
+        run: '"$RUNNER_TEMP/godot" --headless --audio-driver Dummy --script tests/smoke_test.gd'

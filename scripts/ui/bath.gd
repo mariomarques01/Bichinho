@@ -170,6 +170,7 @@ func scrub(at: Vector2) -> void:
 		return
 	progress += 1
 	_splash(1.0 if progress == 10 else 0.60)
+	hud.particles(effects, at, Color("#b7edff"), 5)
 	_spawn(at)
 	hud.play_sound(&"bolha")
 	if progress == 10:
