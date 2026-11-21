@@ -1,4 +1,6 @@
 shader_type canvas_item;
+uniform vec4 growth_tint : source_color = vec4(1.0);
+uniform float growth_factor = 1.0;
 
 // Motion stays within the painted pet, blanket and sleep glyphs.
 uniform float sleeping : hint_range(0.0, 1.0) = 0.0;
@@ -11,8 +13,10 @@ void fragment() {
 	float breathe = sin(TIME * 2.06) * mix(0.0038, 0.0075, sleeping);
 	float drift = sin(TIME * 2.25) * mix(0.0035, 0.009, sleeping);
 	vec2 sample_uv = UV + vec2(breathe * body_pos.x * body * 0.65, breathe * body + drift * dream);
+	sample_uv += (UV - vec2(0.49, 0.448)) * (1.0 / growth_factor - 1.0) * body;
 	vec4 art = texture(TEXTURE, sample_uv);
 	float glow = dream * clamp((art.b - art.r) * 2.0, 0.0, 1.0) * smoothstep(0.47, 0.73, art.g);
 	art.rgb *= 1.0 + glow * (0.09 + 0.08 * sin(TIME * 2.25));
+	art.rgb *= mix(vec3(1.0), growth_tint.rgb, body);
 	COLOR = art;
 }

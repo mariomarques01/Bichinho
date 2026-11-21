@@ -27,6 +27,7 @@ var bath: Bath
 var rest: Rest
 var home: Home
 var level_banner: PanelContainer
+var stage_label: Label
 var sickness_icon: Label
 var feedback: Label
 var lamp_button: Button
@@ -75,10 +76,18 @@ func bind_care(care: Node) -> void:
 	room_result.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	room_result.add_theme_constant_override("outline_size", 6)
 	room_result.hide()
+	stage_label = _label($Interface, "", 24)
+	stage_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	stage_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	stage_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	stage_label.position.y = 5
+	stage_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stage_label.add_theme_constant_override("outline_size", 6)
 	sickness_icon = _label($Interface, "✚ Doente", 32)
 	sickness_icon.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
 	sickness_icon.add_theme_color_override("font_color", Color("#ffcbc8"))
 	sickness_icon.add_theme_constant_override("outline_size", 6)
+	sickness_icon.position.y = 36
 	sickness_icon.hide()
 	WardrobeArt.attach(home.room_art, care.wardrobe)
 	WardrobeArt.attach(home.character, care.wardrobe, Vector2(0.341,0.419), Vector2(0.652,0.419))
@@ -93,6 +102,9 @@ func bind_care(care: Node) -> void:
 
 func _refresh() -> void:
 	var care := menu.care
+	stage_label.text = care.evolution.stage
+	if care.evolution.form != "":
+		stage_label.text += " · " + care.evolution.form
 	if sickness_icon.visible != care.sick:
 		sickness_icon.visible = care.sick
 		if menu.mode in [4, 5]:

@@ -7,6 +7,7 @@ const FOODS := {"Maçã": 15, "Banana": 20, "Frutas vermelhas": 12, "Sanduíche"
 const MEDICINE := "Remédio"
 const SICK_MESSAGE := "Evolin está doente. Use um remédio para voltar a brincar."
 const DECAY := {"Fome": 0.12, "Higiene": 0.08, "Energia": 0.10, "Felicidade": 0.07}
+var evolution := preload("res://scripts/evolution/evolution.gd").new()
 var wardrobe := preload("res://scripts/inventory/wardrobe.gd").new()
 var save_path := "user://care-v1.cfg"
 var needs := {"Fome": 68.0, "Higiene": 72.0, "Energia": 62.0, "Felicidade": 70.0}
@@ -45,8 +46,10 @@ func _ready() -> void:
 		last_update = int(file.get_value("care", "last_update", 0))
 		last_affection = int(file.get_value("care", "last_affection", 0))
 		discoveries.assign(file.get_value("care", "discoveries", []))
+	evolution.restore(file, needs, sick)
+	evolution.update(level_progress(xp).x)
 	advance(now())
-	if migrated:
+	if migrated or not file.has_section("evolution"):
 		_save()
 	var timer := Timer.new()
 	timer.wait_time = 1.0
@@ -75,6 +78,7 @@ func advance(at: int) -> void:
 		_save()
 	if at <= last_update:
 		return
+	var before_decay := needs.duplicate()
 	var sleeping := maxi(0, mini(at, rest_end) - last_update)
 	var elapsed := minf((at - last_update) / 60.0, 360.0)
 	var duration := float(at - last_update)
@@ -104,6 +108,9 @@ func advance(at: int) -> void:
 			_adjust(key, -elapsed * DECAY[key])
 		if roundi(needs[key]) != before:
 			visible_change = true
+	evolution.sample(before_decay, needs, minf(duration, 360.0 * 60.0))
+	if sick and not was_sick:
+		evolution.illnesses += 1
 	last_update = at
 	if rest_end > 0 and at >= rest_end:
 		rest_end = 0
@@ -242,6 +249,7 @@ func mix(ingredients: Array[String]) -> String:
 	return "Descoberta: %s!" % result
 
 func _commit() -> void:
+	evolution.update(level_progress(xp).x)
 	_save()
 	changed.emit()
 
@@ -264,6 +272,7 @@ func _save() -> void:
 	file.set_value("care", "last_update", last_update)
 	file.set_value("care", "last_affection", last_affection)
 	file.set_value("care", "discoveries", discoveries)
+	evolution.save(file)
 	var error := file.save(save_path)
 	if error != OK:
 		push_warning("Não foi possível salvar o progresso do Evolin.")
