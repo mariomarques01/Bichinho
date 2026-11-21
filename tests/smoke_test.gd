@@ -100,6 +100,7 @@ func _run() -> void:
 	_test_local_day_and_sleep(game.care)
 	_test_wardrobe(game, hud)
 	await _test_minigames(game.care, hud)
+	await _test_evolution()
 	_expect(game.sounds.players[&"mordida"].stream.get_length() > 0.0, "Áudio da mordida é carregado")
 	game.hud.play_sound(&"toque")
 	_expect(game.sounds.players[&"toque"].playing, "O HUD aciona o efeito de navegação")
@@ -215,6 +216,7 @@ func _test_care(game: Node3D, hud: CanvasLayer) -> void:
 func _test_sickness(game: Node3D, hud: CanvasLayer) -> void:
 	var care = game.care
 	var start: int = care.last_update
+	var prior_cases: int = care.evolution.illnesses
 	care.needs["Fome"] = 15.12
 	care.needs["Higiene"] = 90.0
 	care.needs["Felicidade"] = 90.0
@@ -259,6 +261,52 @@ func _test_sickness(game: Node3D, hud: CanvasLayer) -> void:
 	care.needs["Higiene"] = 12.0
 	care.advance(care.last_update + 1801)
 	_expect(care.sick, "Higiene baixa também causa doença")
+	_expect(care.evolution.illnesses == prior_cases + 2, "Cada episódio conta uma única vez")
+
+func _test_evolution() -> void:
+	var game := Main.instantiate()
+	game.care.save_path = "user://evolution-smoke-%d.cfg" % Time.get_ticks_usec()
+	root.add_child(game)
+	var hud: CanvasLayer = game.hud
+	var care = game.care
+	var growth = care.evolution
+	_expect(growth.stage == "Filhote", "Antes do nível 5 é Filhote")
+	for target in [5, 10]:
+		var total := 0
+		for level in range(1, target):
+			total += roundi(50.0 * pow(level, 1.4))
+		care.xp = total - 1
+		care.evolution.averages = {"Fome": 60.0, "Higiene": 70.0, "Felicidade": 80.0}
+		care.evolution.illnesses = 1
+		care._gain_xp(1)
+		care._commit()
+		var expected := "Jovem" if target == 5 else "Adulto"
+		_expect(growth.stage == expected and hud.stage_label.text.begins_with(expected), "Evolução e HUD no nível %d" % target)
+	_expect(growth.form == "Aurora", "Média 70 e uma doença dão Aurora")
+	var saved := ConfigFile.new()
+	saved.load(care.save_path)
+	var restored = growth.get_script().new()
+	restored.restore(saved, care.needs, false)
+	_expect(restored.stage == "Adulto" and restored.form == growth.form and restored.illnesses == 1 and restored.averages == growth.averages, "Save preserva a forma e o histórico")
+	for diseases in [0, 2]:
+		var other = growth.get_script().new()
+		var values := {"Fome": 100.0, "Higiene": 80.0, "Felicidade": 90.0}
+		other.sample(values, values, 10.0)
+		if diseases == 0:
+			var low := {"Fome": 10.0, "Higiene": 20.0, "Felicidade": 30.0}
+			other.sample(low, low, 30.0)
+			_expect(is_equal_approx(other.averages.Fome, 32.5), "Média pondera o tempo de cuidado")
+		other.illnesses = diseases
+		other.update(10)
+		_expect(other.form == "Crepúsculo", "Média baixa ou duas doenças dão Crepúsculo")
+		other.illnesses = 0
+		other.averages = values
+		other.update(11)
+		_expect(other.form == "Crepúsculo", "A forma adulta permanece no nível 11")
+	await create_timer(1.5).timeout
+
+	DirAccess.remove_absolute(care.save_path)
+	game.queue_free()
 
 func _test_rewards(game: Node3D, hud: CanvasLayer) -> void:
 	var care = game.care

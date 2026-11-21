@@ -1,4 +1,6 @@
 shader_type canvas_item;
+uniform vec4 growth_tint : source_color = vec4(1.0);
+uniform float growth_factor = 1.0;
 
 // Restrict deformation to the Evolin and foam painted into the bathroom illustration.
 uniform sampler2D atlas_art : source_color, filter_linear;
@@ -19,6 +21,7 @@ void fragment() {
 	float lift = sin(TIME * 2.55) * 0.0028 + response * 0.010;
 	float sway = sin(TIME * 13.0) * (0.0016 + response * 0.010);
 	vec2 sample_uv = UV + mask * vec2(sway * (1.0 - radial.y * 0.42), lift);
+	sample_uv += (UV - center) * (1.0 / growth_factor - 1.0) * mask;
 	vec4 bath = texture(TEXTURE, sample_uv);
 	float eyes_open = opening * (1.0 - smoothstep(0.03, 0.45, response));
 	if (eyes_open > 0.0) {
@@ -28,5 +31,6 @@ void fragment() {
 		bath.rgb = mix(bath.rgb, left.rgb, left.a * eyes_open);
 		bath.rgb = mix(bath.rgb, right.rgb, right.a * eyes_open);
 	}
+	bath.rgb *= mix(vec3(1.0), growth_tint.rgb, mask);
 	COLOR = bath;
 }

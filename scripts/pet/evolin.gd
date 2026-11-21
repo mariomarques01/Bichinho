@@ -13,6 +13,7 @@ const AFFECTION_DURATION := 0.82
 
 enum Mood { NEUTRO, FAMINTO, SUJO, SONOLENTO, FELIZ, DOENTE }
 
+var sprite_factor := 1.0
 var mood := Mood.NEUTRO
 var idle_wait := randf_range(6.0, 12.0)
 var idle_elapsed := 2.0
@@ -120,7 +121,7 @@ func pose_sprite(sprite: TextureRect, blink: float, breath: Vector2, sway: float
 	lids.set_shader_parameter("closure", 1.0 if sleeping else maxf(blink, _mood_closure()))
 	lids.set_shader_parameter("mouth_shape", 0.0 if sleeping else (-1.0 if mood == Mood.FELIZ else yawn))
 	sprite.rotation = sway + look * 0.11 + (_tilt() if not sleeping else 0.0)
-	sprite.scale = breath + Vector2(-0.04, 0.10) * stretch
+	sprite.scale = (breath + Vector2(-0.04, 0.10) * stretch) * sprite_factor
 
 func _process(delta: float) -> void:
 	time += delta

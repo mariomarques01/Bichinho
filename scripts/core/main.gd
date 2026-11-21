@@ -14,6 +14,8 @@ const WardrobeArt = preload("res://scripts/inventory/wardrobe_art.gd")
 var face_accessories: WardrobeArt
 var care := Care.new()
 var sounds := Sounds.new()
+var displayed_stage := ""
+var growth_tween: Tween
 var was_sleeping := false
 var next_dream := 0.0
 var pointer_at := Vector2.ZERO
@@ -88,6 +90,16 @@ func _food_drop(food: String, at: Vector2) -> void:
 		hud.feeding.serve(food, at)
 
 func _refresh_rest() -> void:
+	if displayed_stage != care.evolution.stage:
+		var animate := displayed_stage != ""
+		displayed_stage = care.evolution.stage
+		_show_growth(0.0)
+		if animate:
+			if growth_tween:
+				growth_tween.kill()
+			growth_tween = create_tween()
+			growth_tween.tween_method(_show_growth, 0.0, 1.0, 0.22)
+			growth_tween.tween_method(_show_growth, 1.0, 0.0, 0.55)
 	evolin.set_mood(care.needs, care.sick)
 	var sleeping := care.rest_end > 0
 	evolin.sleeping = sleeping
@@ -214,3 +226,19 @@ func _pet() -> void:
 		hud.heart(hud.home.heart_point())
 	else:
 		hud.heart(room.camera.unproject_position(evolin.heart_origin.global_position))
+
+func _show_growth(pulse: float) -> void:
+	var growth := care.evolution
+	var factor := growth.size_factor() + 0.09 * pulse
+	var color := growth.tint().lerp(Color(1.8, 1.8, 1.6), pulse)
+	evolin.rig.scale = Vector3.ONE * factor
+	var skin := evolin.face.get_active_material(0) as StandardMaterial3D
+	skin.albedo_color = growth.tint()
+	skin.emission_energy_multiplier = 0.22 + pulse
+	evolin.sprite_factor = factor
+	for sprite: TextureRect in [hud.home.character, hud.feeding.character]:
+		sprite.self_modulate = color
+	for portrait: TextureRect in [hud.bath.portrait, hud.rest.portrait]:
+		var shader := portrait.material as ShaderMaterial
+		shader.set_shader_parameter("growth_tint", color)
+		shader.set_shader_parameter("growth_factor", factor)
