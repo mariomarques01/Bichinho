@@ -99,6 +99,7 @@ func _run() -> void:
 	_test_rewards(game, hud)
 	_test_local_day_and_sleep(game.care)
 	_test_wardrobe(game, hud)
+	await _test_minigames(game.care, hud)
 	_expect(game.sounds.players[&"mordida"].stream.get_length() > 0.0, "Áudio da mordida é carregado")
 	game.hud.play_sound(&"toque")
 	_expect(game.sounds.players[&"toque"].playing, "O HUD aciona o efeito de navegação")
@@ -178,6 +179,7 @@ func _test_care(game: Node3D, hud: CanvasLayer) -> void:
 		var second: int = hud.menu.cards.rfind(value)
 		hud.menu.card_buttons[first].pressed.emit()
 		hud.menu.card_buttons[second].pressed.emit()
+	_expect(hud.menu.combo_bonus == 3 and hud.menu.streak == 3, "Três pares seguidos somam três pontos de combo")
 	_expect(care.coins == balance + 8, "Concluir o jogo da memória concede moedas")
 	_expect(game.evolin.reaction.is_running(), "O último par aciona a comemoração")
 	var rewards: Array[Label] = []
@@ -330,6 +332,58 @@ func _test_wardrobe(game: Node3D, hud: CanvasLayer) -> void:
 	screen.buttons["Boina"].pressed.emit()
 	_expect(not model.equipped.has(model.HAT) and "Boina" in model.owned, "Retirar mantém o item comprado")
 	screen.hide()
+
+func _test_minigames(care: Node, hud: CanvasLayer) -> void:
+	hud._open(4)
+	for level in [3, 5]:
+		care.xp = 0
+		while care.level_progress(care.xp).x < level:
+			care.xp += care.level_progress(care.xp).z
+		hud.activity.get_child(2).get_child(1).pressed.emit()
+		await process_frame
+		_expect(hud.menu.cards.size() == (8 if level == 3 else 12), "Memória ajusta pares no nível %d" % level)
+		hud.menu._reveal(hud.menu.cards.find("Sol"))
+		hud.menu._reveal(hud.menu.cards.rfind("Sol"))
+		hud.menu._reveal(hud.menu.cards.find("Lua"))
+		hud.menu._reveal(hud.menu.cards.find("Flor"))
+		_expect(hud.menu.streak == 0 and hud.menu.mistakes == 1, "Errar quebra a sequência")
+		await create_timer(0.68).timeout
+		hud.menu.enter(4)
+	hud.activity.get_child(2).get_child(2).pressed.emit()
+	await process_frame
+	var jumper = hud.activity.get_child(2)
+	jumper.set_physics_process(false)
+	var bounced := false
+	for frame in 120:
+		var falling: bool = jumper.speed_y > 0
+		jumper._physics_process(1.0 / 60)
+		if falling and jumper.speed_y < 0:
+			bounced = true
+			break
+	_expect(bounced, "Evolin aterrissa na primeira plataforma e volta a pular")
+	var press := InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	press.position.x = 0.0 if jumper.platforms[0].x > 200 else jumper.size.x
+	jumper._gui_input(press)
+	_expect(abs(jumper.direction) == 1, "Metade tocada define a direção")
+	var before: int = care.coins
+	care.daily_wins = 3
+	care.bonus_day = care._local_day(care.now())
+	for frame in 240:
+		jumper._physics_process(1.0 / 60)
+		if not jumper.running:
+			break
+	var earned := clampi(ceili(jumper.height / 15.0), 0, 6)
+	_expect(not jumper.running and jumper.height > 15 and care.coins == before + earned, "Queda paga a altura alcançada sem ultrapassar o bônus diário")
+	jumper._physics_process(1.0 / 60)
+	_expect(care.coins == before + earned, "A queda paga uma única vez")
+	await process_frame
+	hud.activity.get_child(2).get_child(2).pressed.emit()
+	await process_frame
+	care.sick = true
+	care.changed.emit()
+	_expect(not hud.menu.jumping and hud.activity.get_child(1).text == care.SICK_MESSAGE and care.coins == before + earned, "Adoecer interrompe Pula EVO sem pagar")
 
 func _click(at: Vector2) -> void:
 	_button_at(at, true)

@@ -1,6 +1,8 @@
 extends RefCounted
 
 const Care = preload("res://scripts/needs/care.gd")
+const PulaEvo = preload("res://scripts/minigames/pula_evo.gd")
+const SYMBOLS := ["Sol", "Lua", "Flor", "Mar", "Luz", "Céu"]
 const TITLES := ["Alimentar", "Higienizar", "Descansar", "Carinho", "Brincar", "Experimentar"]
 const COLORS := ["#a95320", "#22688e", "#644397", "#963c73", "#5054a0", "#267458"]
 var hud: CanvasLayer
@@ -9,12 +11,17 @@ var mode := -1
 var cards: Array[String] = []
 var card_buttons: Array[Button] = []
 var first := -1
+var streak := 0
+var combo_bonus := 0
+var memory_status: Label
+var jumping := false
 var mistakes := 0
 var pairs := 0
 var locked := false
 var selection: Array[String] = []
 
 func enter(next: int) -> void:
+	jumping = false
 	mode = next
 	selection.clear()
 	cards.clear()
@@ -36,7 +43,11 @@ func paint() -> void:
 		3:
 			hud._label(hud.activity, "Toque ou deslize sobre o Evolin.", 30)
 			hud._button(hud.activity, "Fazer carinho", Color(COLORS[3])).pressed.connect(hud.pet_requested.emit)
-		4: _memory()
+		4:
+			if jumping:
+				_pula_evo()
+			else:
+				_memory()
 		5: _experiment()
 
 func _grid(columns: int) -> GridContainer:
@@ -47,13 +58,18 @@ func _grid(columns: int) -> GridContainer:
 	return grid
 
 func _memory() -> void:
-	hud._label(hud.activity, "Memória Mágica · encontre os pares.", 30)
+	memory_status = hud._label(hud.activity, "Memória Mágica · encontre os pares.", 30)
 	if cards.is_empty():
 		var options := _grid(2)
 		hud._button(options, "Pular", Color(COLORS[4])).pressed.connect(hud.jump_requested.emit)
 		hud._button(options, "Jogar memória", Color(COLORS[4])).pressed.connect(func() -> void:
 			hud.play_sound(&"toque")
-			cards.assign(["Sol", "Lua", "Flor", "Sol", "Lua", "Flor"])
+			var level := Care.level_progress(care.xp).x
+			var count := 6 if level >= 5 else (4 if level >= 3 else 3)
+			cards.assign(SYMBOLS.slice(0, count))
+			cards.append_array(SYMBOLS.slice(0, count))
+			streak = 0
+			combo_bonus = 0
 			cards.shuffle()
 			first = -1
 			mistakes = 0
@@ -61,16 +77,20 @@ func _memory() -> void:
 			locked = false
 			paint.call_deferred()
 		)
+		hud._button(options, "Pula EVO", Color(COLORS[4])).pressed.connect(func() -> void:
+			jumping = true
+			paint.call_deferred()
+		)
 		return
 	card_buttons.clear()
-	var grid := _grid(3)
+	var grid := _grid(3 if cards.size() == 6 else 4)
 	for i in cards.size():
 		var button: Button = hud._button(grid, "?", Color(COLORS[4]))
 		card_buttons.append(button)
 		button.pressed.connect(_reveal.bind(i))
 
 func _reveal(index: int) -> void:
-	if locked or first == index:
+	if locked or first == index or index >= cards.size() or card_buttons[index].disabled:
 		return
 	hud.play_sound(&"toque")
 	card_buttons[index].text = cards[index]
@@ -83,15 +103,22 @@ func _reveal(index: int) -> void:
 		card_buttons[previous].disabled = true
 		card_buttons[index].disabled = true
 		pairs += 1
-		hud.play_pair.emit(pairs == 3)
-		if pairs == 3:
+		streak += 1
+		combo_bonus += streak - 1
+		var goal := cards.size() / 2
+		memory_status.text = "%d/%d pares · sequência %d · bônus +%d" % [pairs, goal, streak, combo_bonus]
+		hud.play_pair.emit(pairs == goal)
+		if pairs == goal:
 			hud.play_sound(&"recompensa")
-			var score := maxi(1, pairs * 2 - mistakes)
-			var reward := care.played(score)
+			var score := maxi(1, pairs * 2 + combo_bonus - mistakes)
+			var perfect := goal * 2 + goal * (goal - 1) / 2
+			var reward := care.played(clampi(roundi(6.0 * score / perfect), 1, 6))
 			hud.show_reaction("%d pontos! +%d moedas" % [score, reward])
 			cards.clear()
 			paint.call_deferred()
 	else:
+		streak = 0
+		memory_status.text = "%d/%d pares" % [pairs, cards.size() / 2]
 		mistakes += 1
 		locked = true
 		var left := card_buttons[previous]
@@ -101,6 +128,20 @@ func _reveal(index: int) -> void:
 			left.text = "?"
 			right.text = "?"
 			locked = false
+
+func _pula_evo() -> void:
+	hud._label(hud.activity, "Pula EVO · segure à esquerda ou à direita", 30)
+	var game := PulaEvo.new()
+	game.avatar = hud.home.character.texture
+	hud.activity.add_child(game)
+	game.finished.connect(func(height: int) -> void:
+		if not jumping or mode != 4 or care.sick:
+			return
+		jumping = false
+		var reward := care.played(clampi(ceili(height / 15.0), 0, 6))
+		hud.show_reaction("Pula EVO · %d m · +%d moedas" % [height, reward])
+		paint.call_deferred()
+	, CONNECT_ONE_SHOT)
 
 func _experiment() -> void:
 	hud._label(hud.activity, "Escolha dois ingredientes para misturar.", 30)
