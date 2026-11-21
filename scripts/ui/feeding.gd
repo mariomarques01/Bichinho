@@ -44,6 +44,7 @@ var coin_icon: TextureRect
 var wallet: Label
 var stats: Dictionary = {}
 var message: Label
+var medicine: Button
 var food_detail: Label
 var canvas: Control
 var press_position := Vector2.ZERO
@@ -189,6 +190,10 @@ func _build() -> void:
 		quantity.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		counts[food] = quantity
 
+	medicine = hud._button(column, "", Color("#49766d"))
+	medicine.pressed.connect(func() -> void:
+		message.text = care.buy(Care.MEDICINE) if shopping else care.use_medicine()
+	)
 	message = _label(column, "", 30)
 	message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -276,6 +281,9 @@ func _process(delta: float) -> void:
 	evolin.pose_sprite(character, Blink.closure(idle_clock), Vector2(1.0 - breath * 0.008, 1.0 + breath * 0.018), 0.0)
 
 func refresh() -> void:
+	var doses := int(care.stock[Care.MEDICINE])
+	medicine.visible = shopping or doses > 0 or care.sick
+	medicine.text = ("Comprar remédio · 15 moedas" if shopping else "Usar remédio") + "  ×%d" % doses
 	for key: String in stats:
 		stats[key][0].text = "%d%%" % roundi(care.needs[key])
 	food_detail.text = "%s  ·  %s" % [FOOD_NAMES.get(selected, selected), "5 moedas" if shopping else "+%d de saciedade" % Care.FOODS[selected]]

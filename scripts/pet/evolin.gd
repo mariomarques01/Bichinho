@@ -11,7 +11,7 @@ const AFFECTION_DURATION := 0.82
 @onready var pose: Node3D = $Rig/Pose
 @onready var heart_origin: Marker3D = $Rig/HeartOrigin
 
-enum Mood { NEUTRO, FAMINTO, SUJO, SONOLENTO, FELIZ }
+enum Mood { NEUTRO, FAMINTO, SUJO, SONOLENTO, FELIZ, DOENTE }
 
 var mood := Mood.NEUTRO
 var idle_wait := randf_range(6.0, 12.0)
@@ -62,7 +62,10 @@ func _ready() -> void:
 				tail_axis = (skeleton.get_bone_global_rest(index).basis.inverse() * Vector3.UP).normalized()
 				break
 
-func set_mood(needs: Dictionary) -> void:
+func set_mood(needs: Dictionary, sick := false) -> void:
+	if sick:
+		mood = Mood.DOENTE
+		return
 	var lowest := minf(needs["Energia"], minf(needs["Fome"], needs["Higiene"]))
 	if lowest <= 35.0:
 		if needs["Energia"] == lowest:
@@ -101,12 +104,15 @@ func _update_idle(delta: float) -> void:
 
 func _mood_closure() -> float:
 	match mood:
+		Mood.DOENTE: return 0.72
 		Mood.FAMINTO: return 0.52
 		Mood.SUJO: return 0.32
 		Mood.SONOLENTO: return 0.45 + yawn * 0.5
 	return 0.0
 
 func _tilt() -> float:
+	if mood == Mood.DOENTE:
+		return 0.14 + sin(time * 16.0) * 0.019
 	return -0.10 if mood == Mood.SUJO else 0.0
 
 func pose_sprite(sprite: TextureRect, blink: float, breath: Vector2, sway: float) -> void:

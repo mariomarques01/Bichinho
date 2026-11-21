@@ -23,6 +23,7 @@ var feeding: Feeding
 var bath: Bath
 var rest: Rest
 var home: Home
+var sickness_icon: Label
 var feedback: Label
 var lamp_button: Button
 var feedback_time: Timer
@@ -54,12 +55,21 @@ func bind_care(care: Node) -> void:
 	home = Home.new()
 	$Interface.add_child(home)
 	home.setup(self, care)
+	sickness_icon = _label($Interface, "✚ Doente", 32)
+	sickness_icon.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	sickness_icon.add_theme_color_override("font_color", Color("#ffcbc8"))
+	sickness_icon.add_theme_constant_override("outline_size", 6)
+	sickness_icon.hide()
 	safe.hide()
 	care.changed.connect(_refresh)
 	_refresh()
 
 func _refresh() -> void:
 	var care := menu.care
+	if sickness_icon.visible != care.sick:
+		sickness_icon.visible = care.sick
+		if menu.mode in [4, 5]:
+			menu.enter(menu.mode)
 	var previous_xp := int(animation.targets.get("xp", care.xp))
 	var previous_coins := int(animation.targets.get("coins", care.coins))
 	for key: String in bars:

@@ -75,6 +75,7 @@ func _run() -> void:
 	evolin._update_idle(0.4)
 	_expect(evolin.idle_wait >= 6.0 and evolin.idle_wait <= 12.0 and absf(evolin.look) + evolin.stretch > 0.0, "Idle varia a pose e agenda outro gesto")
 	await _test_care(game, hud)
+	_test_sickness(game, hud)
 	_expect(game.sounds.players[&"mordida"].stream.get_length() > 0.0, "Áudio da mordida é carregado")
 	game.hud.play_sound(&"toque")
 	_expect(game.sounds.players[&"toque"].playing, "O HUD aciona o efeito de navegação")
@@ -179,6 +180,54 @@ func _test_care(game: Node3D, hud: CanvasLayer) -> void:
 	_expect(care.coins == balance + 14, "A primeira descoberta concede moedas")
 	var save := ConfigFile.new()
 	_expect(save.load(care.save_path) == OK and save.get_value("care", "coins", -1) == care.coins, "Ações salvam o progresso local")
+
+func _test_sickness(game: Node3D, hud: CanvasLayer) -> void:
+	var care = game.care
+	var start: int = care.last_update
+	care.needs["Fome"] = 15.12
+	care.needs["Higiene"] = 90.0
+	care.needs["Felicidade"] = 90.0
+	care.advance(start + 1860)
+	_expect(not care.sick, "Exatamente 30 minutos abaixo de 15 ainda não causam doença")
+	care.advance(start + 1920)
+	_expect(care.sick and is_equal_approx(care.needs["Felicidade"], 90.0 - 33.0 * 0.07), "Felicidade cai em dobro apenas após adoecer")
+	_expect(hud.sickness_icon.visible and game.evolin.mood == game.evolin.Mood.DOENTE, "HUD e expressão indicam doença")
+	var saved := ConfigFile.new()
+	_expect(saved.load(care.save_path) == OK and saved.get_value("care", "sick", false), "A doença é salva ao começar")
+	var loaded = care.get_script().new()
+	loaded.save_path = care.save_path
+	root.add_child(loaded)
+	_expect(loaded.sick and is_equal_approx(loaded.low_seconds["Fome"], care.low_seconds["Fome"]), "Reabrir o save preserva doença e exposição")
+	loaded.queue_free()
+	var balance: int = care.coins
+	care.played()
+	var ingredients: Array[String] = ["Cristal", "Folha"]
+	_expect(care.coins == balance and care.mix(ingredients) == care.SICK_MESSAGE, "Diversão bloqueada preserva as recompensas")
+	for index in [4, 5]:
+		hud._open(index)
+		_expect(hud.activity.get_child(1).text == care.SICK_MESSAGE, "Atividade bloqueada explica como curar")
+	hud._open(0)
+	care.coins = 14
+	hud.feeding.shopping = true
+	hud.feeding.medicine.pressed.emit()
+	_expect(care.stock[care.MEDICINE] == 0 and care.coins == 14, "Saldo insuficiente preserva o estoque")
+	care.coins = 15
+	hud.feeding.medicine.pressed.emit()
+	_expect(care.stock[care.MEDICINE] == 1 and care.coins == 0 and care.sick, "Comprar remédio custa 15 moedas")
+	hud.feeding.shopping = false
+	hud.feeding.medicine.pressed.emit()
+	_expect(not care.sick and not hud.sickness_icon.visible and care.stock[care.MEDICINE] == 0, "Usar a dose cura e remove o ícone")
+	care.advance(care.last_update + 60)
+	_expect(not care.sick, "A cura reinicia o tempo de exposição")
+	care.needs["Fome"] = 80.0
+	care.needs["Higiene"] = 12.0
+	care.advance(care.last_update + 1700)
+	care.wash()
+	care.advance(care.last_update + 200)
+	_expect(not care.sick, "Banho interrompe a exposição contínua")
+	care.needs["Higiene"] = 12.0
+	care.advance(care.last_update + 1801)
+	_expect(care.sick, "Higiene baixa também causa doença")
 
 func _click(at: Vector2) -> void:
 	var event := InputEventMouseButton.new()

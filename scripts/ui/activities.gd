@@ -28,6 +28,9 @@ func paint() -> void:
 		return
 	var title: Label = hud._label(hud.activity, TITLES[mode], 39)
 	title.add_theme_color_override("font_color", Color("#ffe3bb"))
+	if care.sick and mode in [4, 5]:
+		hud._label(hud.activity, Care.SICK_MESSAGE, 30).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		return
 	match mode:
 		3:
 			hud._label(hud.activity, "Toque ou deslize sobre o Evolin.", 30)

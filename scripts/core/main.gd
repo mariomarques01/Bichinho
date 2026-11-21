@@ -26,8 +26,6 @@ func _ready() -> void:
 	hud.bind_care(care)
 	hud.home.evolin = evolin
 	hud.feeding.evolin = evolin
-	care.changed.connect(evolin.set_mood.bind(care.needs))
-	evolin.set_mood(care.needs)
 	hud.activity_changed.connect(_activity_changed)
 	_activity_changed(-1)
 	hud.food_drop.connect(_food_drop)
@@ -77,6 +75,7 @@ func _food_drop(food: String, at: Vector2) -> void:
 		hud.feeding.serve(food, at)
 
 func _refresh_rest() -> void:
+	evolin.set_mood(care.needs, care.sick)
 	var sleeping := care.rest_end > 0
 	evolin.sleeping = sleeping
 	hud.home.sleeping = sleeping
