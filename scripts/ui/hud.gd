@@ -1,6 +1,7 @@
 extends CanvasLayer
 
 const Activities = preload("res://scripts/ui/activities.gd")
+const Care = preload("res://scripts/needs/care.gd")
 
 const Feeding = preload("res://scripts/ui/feeding.gd")
 const Bath = preload("res://scripts/ui/bath.gd")
@@ -23,6 +24,7 @@ var feeding: Feeding
 var bath: Bath
 var rest: Rest
 var home: Home
+var level_banner: PanelContainer
 var sickness_icon: Label
 var feedback: Label
 var lamp_button: Button
@@ -85,6 +87,9 @@ func _refresh() -> void:
 	var anchor := icon.get_global_rect().get_center()
 	var y := maxf(anchor.y + 100.0, 145.0)
 	if care.xp > previous_xp:
+		var level := Care.level_progress(care.xp).x
+		if level > Care.level_progress(previous_xp).x:
+			_show_level(level)
 		_float_effect(Vector2(get_viewport().get_visible_rect().size.x * 0.24, y), "+%d XP" % (care.xp - previous_xp), Color("#ffb8ff"), 0.8, 36)
 	if care.coins > previous_coins:
 		animation.pop(icon)
@@ -105,15 +110,16 @@ func _draw_profile() -> void:
 	var shown_xp := float(animation.shown.get("xp", menu.care.xp))
 	var xp := floori(shown_xp)
 	var coins := roundi(animation.shown.get("coins", menu.care.coins))
-	var level := "Nível %d" % (1 + xp / 50)
-	var progress := "%d/50 XP" % (xp % 50)
+	var state := Care.level_progress(xp)
+	var level := "Nível %d" % state.x
+	var progress := "%d/%d XP" % [state.y, state.z]
 	profile.text = "%s  ·  %s  ·  %d moedas" % [level, progress, coins]
 	feeding.profile.text = "%s   ·   %s" % [level, progress]
 	home.xp_reading.text = progress
 	for label: Label in [home.level, bath.level, rest.level]:
 		label.text = level
 	for bar: ProgressBar in [home.xp_bar, bath.xp, rest.xp]:
-		bar.value = fmod(shown_xp, 50.0) * 2.0
+		bar.value = 100.0 * (state.y + shown_xp - xp) / state.z
 	for label: Label in [home.coins, feeding.wallet, bath.coins, rest.coins]:
 		label.text = str(coins)
 
@@ -266,6 +272,43 @@ func dream(at: Vector2) -> void:
 
 func spark(at: Vector2) -> void:
 	_float_effect(at, "✦", Color("#ffdf90"))
+
+func _show_level(level: int) -> void:
+	if is_instance_valid(level_banner):
+		level_banner.hide()
+		level_banner.queue_free()
+	level_banner = _panel($Interface, Color("#503568"))
+	var banner := level_banner
+	banner.z_index = 20
+	_label(banner, "Nível %d!" % level, 56)
+	banner.reset_size()
+	banner.set_anchors_and_offsets_preset(Control.PRESET_CENTER, Control.PRESET_MODE_KEEP_SIZE)
+	banner.pivot_offset = banner.size * 0.5
+	banner.scale = Vector2.ONE * 0.7
+	var sparks := GPUParticles2D.new()
+	sparks.emitting = false
+	sparks.amount = 24
+	sparks.one_shot = true
+	sparks.explosiveness = 1.0
+	sparks.lifetime = 0.85
+	sparks.position = banner.pivot_offset
+	var burst := ParticleProcessMaterial.new()
+	burst.particle_flag_disable_z = true
+	burst.spread = 180.0
+	burst.initial_velocity_min = 120.0
+	burst.initial_velocity_max = 290.0
+	burst.gravity = Vector3(0, 220, 0)
+	burst.scale_min = 3.0
+	burst.scale_max = 7.0
+	burst.color = Color("#ffdf90")
+	sparks.process_material = burst
+	banner.add_child(sparks)
+	sparks.emitting = true
+	var tween := banner.create_tween()
+	tween.tween_property(banner, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_interval(0.8)
+	tween.tween_property(banner, "modulate:a", 0.0, 0.25)
+	tween.tween_callback(banner.queue_free)
 
 func _float_effect(at: Vector2, symbol: String, color: Color, duration := 0.58, font_size := 84) -> void:
 	var mark := _label($Interface, symbol, font_size)

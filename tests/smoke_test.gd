@@ -76,6 +76,7 @@ func _run() -> void:
 	_expect(evolin.idle_wait >= 6.0 and evolin.idle_wait <= 12.0 and absf(evolin.look) + evolin.stretch > 0.0, "Idle varia a pose e agenda outro gesto")
 	await _test_care(game, hud)
 	_test_sickness(game, hud)
+	_test_rewards(game, hud)
 	_expect(game.sounds.players[&"mordida"].stream.get_length() > 0.0, "Áudio da mordida é carregado")
 	game.hud.play_sound(&"toque")
 	_expect(game.sounds.players[&"toque"].playing, "O HUD aciona o efeito de navegação")
@@ -200,7 +201,7 @@ func _test_sickness(game: Node3D, hud: CanvasLayer) -> void:
 	_expect(loaded.sick and is_equal_approx(loaded.low_seconds["Fome"], care.low_seconds["Fome"]), "Reabrir o save preserva doença e exposição")
 	loaded.queue_free()
 	var balance: int = care.coins
-	care.played()
+	care.played(6)
 	var ingredients: Array[String] = ["Cristal", "Folha"]
 	_expect(care.coins == balance and care.mix(ingredients) == care.SICK_MESSAGE, "Diversão bloqueada preserva as recompensas")
 	for index in [4, 5]:
@@ -228,6 +229,27 @@ func _test_sickness(game: Node3D, hud: CanvasLayer) -> void:
 	care.needs["Higiene"] = 12.0
 	care.advance(care.last_update + 1801)
 	_expect(care.sick, "Higiene baixa também causa doença")
+
+func _test_rewards(game: Node3D, hud: CanvasLayer) -> void:
+	var care = game.care
+	care.sick = false
+	care.xp = 49
+	care.changed.emit()
+	var balance: int = care.coins
+	care.daily_wins = 0
+	_expect(care.played(3) == 5 and care.coins == balance + 25, "Pontuação, bônus e nível 2 pagam juntos")
+	_expect(is_instance_valid(hud.level_banner) and hud.level_banner.get_child(0).text == "Nível 2!", "Subir de nível mostra o painel")
+	_expect(care.level_progress(181) == Vector3i(2, 131, 132) and care.level_progress(182).x == 3, "A curva usa o custo acumulado de cada nível")
+	care.played(1)
+	care.played(2)
+	_expect(care.played(6) == 6, "Quarta vitória mantém só a recompensa de pontuação")
+	var loaded = care.get_script().new()
+	loaded.save_path = care.save_path
+	root.add_child(loaded)
+	_expect(loaded.coins == care.coins and loaded.played(3) == 3, "Reabrir o save preserva o limite diário e o saldo")
+	loaded.bonus_day -= 1
+	_expect(loaded.played(3) == 5, "Um novo dia renova o bônus")
+	loaded.queue_free()
 
 func _click(at: Vector2) -> void:
 	var event := InputEventMouseButton.new()

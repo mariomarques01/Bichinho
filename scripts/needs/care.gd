@@ -14,6 +14,8 @@ var sick := false
 var low_seconds := {"Fome": 0.0, "Higiene": 0.0}
 var coins := 30
 var xp := 0
+var bonus_day := -1
+var daily_wins := 0
 var rest_end := 0
 var last_update := 0
 var last_affection := 0
@@ -32,6 +34,8 @@ func _ready() -> void:
 		for key: String in low_seconds:
 			low_seconds[key] = maxf(0.0, float(file.get_value("low_seconds", key, 0.0)))
 		coins = maxi(0, int(file.get_value("care", "coins", coins)))
+		bonus_day = int(file.get_value("care", "bonus_day", -1))
+		daily_wins = clampi(int(file.get_value("care", "daily_wins", 0)), 0, 3)
 		xp = maxi(0, int(file.get_value("care", "xp", xp)))
 		rest_end = int(file.get_value("care", "rest_end", 0))
 		last_update = int(file.get_value("care", "last_update", 0))
@@ -111,7 +115,7 @@ func feed(food: String) -> String:
 	_adjust("Fome", FOODS[food])
 	if needs["Fome"] >= 15.0:
 		low_seconds["Fome"] = 0.0
-	xp += 5
+	_gain_xp(5)
 	_commit()
 	return "Evolin comeu %s!" % food.to_lower()
 
@@ -145,7 +149,7 @@ func wash() -> void:
 	advance(now())
 	_adjust("Higiene", 32)
 	low_seconds["Higiene"] = 0.0
-	xp += 8
+	_gain_xp(8)
 	_commit()
 
 func rest(minutes: int) -> bool:
@@ -166,16 +170,42 @@ func affection() -> void:
 		return
 	last_affection = now()
 	_adjust("Felicidade", 5)
-	xp += 2
+	_gain_xp(2)
 	_commit()
 
-func played() -> void:
-	if sick:
-		return
-	coins += 8
-	xp += 12
+# Level, XP earned within this level, XP required to finish it.
+static func level_progress(total_xp: int) -> Vector3i:
+	var level := 1
+	var remaining := maxi(0, total_xp)
+	var required := 50
+	while remaining >= required:
+		remaining -= required
+		level += 1
+		required = roundi(50.0 * pow(level, 1.4))
+	return Vector3i(level, remaining, required)
+
+func _gain_xp(amount: int) -> void:
+	var previous := level_progress(xp).x
+	xp += amount
+	for level in range(previous + 1, level_progress(xp).x + 1):
+		coins += level * 10
+
+func played(score: int) -> int:
+	if sick or score <= 0:
+		return 0
+	var day := now() / 86400
+	if day > bonus_day:
+		bonus_day = day
+		daily_wins = 0
+	var reward := clampi(score, 1, 6)
+	if day == bonus_day and daily_wins < 3:
+		reward += 2
+		daily_wins += 1
+	coins += reward
+	_gain_xp(12)
 	_adjust("Felicidade", 12)
 	_commit()
+	return reward
 
 func mix(ingredients: Array[String]) -> String:
 	if sick:
@@ -191,7 +221,7 @@ func mix(ingredients: Array[String]) -> String:
 		return "%s · já descoberto" % result
 	discoveries.append(key)
 	coins += 6
-	xp += 10
+	_gain_xp(10)
 	_commit()
 	return "Descoberta: %s!" % result
 
@@ -211,6 +241,8 @@ func _save() -> void:
 	file.set_value("care", "version", SAVE_VERSION)
 	file.set_value("care", "coins", coins)
 	file.set_value("care", "xp", xp)
+	file.set_value("care", "bonus_day", bonus_day)
+	file.set_value("care", "daily_wins", daily_wins)
 	file.set_value("care", "rest_end", rest_end)
 	file.set_value("care", "last_update", last_update)
 	file.set_value("care", "last_affection", last_affection)

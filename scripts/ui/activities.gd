@@ -9,6 +9,7 @@ var mode := -1
 var cards: Array[String] = []
 var card_buttons: Array[Button] = []
 var first := -1
+var mistakes := 0
 var pairs := 0
 var locked := false
 var selection: Array[String] = []
@@ -55,6 +56,7 @@ func _memory() -> void:
 			cards.assign(["Sol", "Lua", "Flor", "Sol", "Lua", "Flor"])
 			cards.shuffle()
 			first = -1
+			mistakes = 0
 			pairs = 0
 			locked = false
 			paint.call_deferred()
@@ -84,11 +86,13 @@ func _reveal(index: int) -> void:
 		hud.play_pair.emit(pairs == 3)
 		if pairs == 3:
 			hud.play_sound(&"recompensa")
-			care.played()
-			hud.show_reaction("Todos os pares! +8 moedas")
+			var score := maxi(1, pairs * 2 - mistakes)
+			var reward := care.played(score)
+			hud.show_reaction("%d pontos! +%d moedas" % [score, reward])
 			cards.clear()
 			paint.call_deferred()
 	else:
+		mistakes += 1
 		locked = true
 		var left := card_buttons[previous]
 		var right := card_buttons[index]
