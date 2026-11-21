@@ -471,26 +471,102 @@ func _test_minigames(care: Node, hud: CanvasLayer) -> void:
 	var press := InputEventMouseButton.new()
 	press.button_index = MOUSE_BUTTON_LEFT
 	press.pressed = true
-	press.position.x = 0.0 if jumper.platforms[0].x > 200 else jumper.size.x
+	press.position.x = 0.0 if jumper.platforms[0].position.x > 200 else jumper.size.x
 	jumper._gui_input(press)
 	_expect(abs(jumper.direction) == 1, "Metade tocada define a direção")
 	var before: int = care.coins
 	care.daily_wins = 3
 	care.bonus_day = care._local_day(care.now())
-	for frame in 240:
-		jumper._physics_process(1.0 / 60)
-		if not jumper.running:
-			break
-	var earned := clampi(ceili(jumper.height / 15.0), 0, 6)
-	_expect(not jumper.running and jumper.height > 15 and care.coins == before + earned, "Queda paga a altura alcançada sem ultrapassar o bônus diário")
+	jumper.speed_y = 100.0
+	jumper.player.y = jumper.camera_y + jumper.BOARD.y + 40
 	jumper._physics_process(1.0 / 60)
-	_expect(care.coins == before + earned, "A queda paga uma única vez")
+	_expect(not jumper.running and care.coins == before, "Partida curta termina sem moedas")
+	_expect(hud.room_result.text.contains("Novo recorde!") and care.pula_record == jumper.height + jumper.collected, "Fim de partida anuncia o recorde de pontos")
+	var loaded = care.get_script().new()
+	loaded.save_path = care.save_path
+	root.add_child(loaded)
+	_expect(loaded.pula_record == care.pula_record, "Recorde persiste no save")
+	loaded.free()
+	_expect(jumper.payout(41, 7.99, true) == 0 and jumper.payout(41, 8.0, true) == 2 and jumper.payout(999, 20, true) == 6, "Recompensa respeita duração, altura e teto")
+	_expect(jumper.payout(321, 15, false) == 0, "Ocioso não ganha moedas mesmo após oito segundos")
+	jumper._physics_process(1.0 / 60)
+	_expect(care.coins == before, "A queda paga uma única vez")
+	_fuzz_pula()
+	await process_frame
+	hud.activity.get_child(2).get_child(2).pressed.emit()
+	await process_frame
+	jumper = hud.activity.get_child(2)
+	jumper.elapsed = 8.0
+	jumper.height = 81
+	jumper.steered = true
+	jumper.speed_y = 100
+	jumper.player.y = jumper.camera_y + jumper.BOARD.y + 45
+	care.daily_wins = 0
+	care.xp = 0
+	jumper._physics_process(1.0 / 60)
+	_expect(care.coins == before + 3 and care.daily_wins == 0, "Partida válida paga apenas ceil(altura/40)")
+	before = care.coins
 	await process_frame
 	hud.activity.get_child(2).get_child(2).pressed.emit()
 	await process_frame
 	care.sick = true
 	care.changed.emit()
-	_expect(not hud.menu.jumping and hud.activity.get_child(1).text == care.SICK_MESSAGE and care.coins == before + earned, "Adoecer interrompe Pula EVO sem pagar")
+	_expect(not hud.menu.jumping and hud.activity.get_child(1).text == care.SICK_MESSAGE and care.coins == before, "Adoecer interrompe Pula EVO sem pagar")
+
+func _fuzz_pula() -> void:
+	const Jumper = preload("res://scripts/minigames/pula_evo.gd")
+	var input_rng := RandomNumberGenerator.new()
+	input_rng.seed = 7001
+	var moving := 0
+	var fragile := 0
+	var springs := 0
+	var coins := 0
+	for seed_value in 64:
+		var game := Jumper.new()
+		game.rng.seed = seed_value
+		root.add_child(game)
+		game.set_physics_process(false)
+		game.camera_y = -4200
+		game._extend_platforms()
+		for ledge in game.platforms:
+			moving += int(ledge.moving)
+			fragile += int(ledge.fragile)
+			springs += int(ledge.spring)
+			coins += int(ledge.coin)
+		game.player = Vector2(320, -3890)
+		for frame in 480:
+			game.direction = input_rng.randi_range(-1, 1)
+			game._physics_process(input_rng.randf_range(0.008, 0.033))
+			if not game.running:
+				break
+		_expect(game.player.is_finite(), "Simulação de plataformas na semente %d" % seed_value)
+		game.free()
+	_expect(mini(mini(moving, fragile), mini(springs, coins)) > 0, "Fuzz percorre plataformas especiais, molas e moedas")
+	for fragile_ledge in [false, true]:
+		var game := Jumper.new()
+		root.add_child(game)
+		var ledge := game.platforms[0]
+		ledge.spring = not fragile_ledge
+		ledge.fragile = fragile_ledge
+		ledge.coin = true
+		game.player = ledge.position + Vector2(game.PLATFORM_WIDTH * 0.5, -1)
+		game.speed_y = 120.0
+		game._physics_process(1.0 / 60)
+		_expect(game.collected == 1 and not game.platforms.has(ledge), "Colisão recolhe moeda aérea e consome plataforma")
+		if fragile_ledge:
+			_expect(game.speed_y > 0, "Plataforma frágil quebra sem quicar")
+		else:
+			_expect(is_equal_approx(game.speed_y, game.BOUNCE * 1.6), "Mola aumenta o impulso em 60%")
+		game.free()
+	var idle := Jumper.new()
+	idle.rng.seed = 17
+	root.add_child(idle)
+	for frame in 7200:
+		idle._physics_process(1.0 / 60)
+		if not idle.running:
+			break
+	_expect(not idle.running and idle.payout(idle.height, idle.elapsed, idle.steered) == 0, "Partida ociosa completa rende zero")
+	idle.free()
 
 func _click(at: Vector2) -> void:
 	_button_at(at, true)

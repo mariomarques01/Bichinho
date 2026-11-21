@@ -127,18 +127,26 @@ func _reveal(index: int) -> void:
 			locked = false
 
 func _pula_evo() -> void:
-	hud._label(hud.activity, "Pula EVO · segure à esquerda ou à direita", 30)
+	hud._label(hud.activity, "Pula EVO · segure à esquerda ou à direita\nRecorde: %d pontos" % care.pula_record, 30)
 	var game := PulaEvo.new()
 	game.avatar = hud.home.character.texture
 	hud.activity.add_child(game)
-	game.finished.connect(func(height: int) -> void:
+	game.finished.connect(func(height: int, score: int, reward: int) -> void:
 		if not jumping or mode != 4 or care.sick:
 			return
 		jumping = false
-		var reward := care.played(clampi(ceili(height / 15.0), 0, 6))
+		var record := score > care.pula_record
+		if record:
+			care.pula_record = score
 		if reward > 0:
+			care.played(reward, false)
 			hud.play_sound(&"recompensa")
-		hud.show_reaction("Pula EVO · %d m · +%d moedas" % [height, reward])
+		elif record:
+			care._commit()
+		var result := "%d m · %d pontos · +%d moedas" % [height, score, reward]
+		hud.show_reaction("Novo recorde!\n" + result if record else result)
+		if record:
+			hud.animation.pop(hud.room_result)
 		paint.call_deferred()
 	, CONNECT_ONE_SHOT)
 
