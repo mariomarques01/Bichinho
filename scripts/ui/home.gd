@@ -42,6 +42,10 @@ var idle_clock := 0.0
 var evolin: Evolin
 var eyelids := ShaderMaterial.new()
 var sleeping := false
+var holding := false
+var dragging := false
+var grab_offset := Vector2.ZERO
+var grab_start := Vector2.ZERO
 
 func setup(owner_hud: CanvasLayer, profile: Care) -> void:
 	hud = owner_hud
@@ -58,7 +62,7 @@ func setup(owner_hud: CanvasLayer, profile: Care) -> void:
 	refresh()
 
 func _process(delta: float) -> void:
-	if not visible or (reaction and reaction.is_running()):
+	if not visible or dragging or (reaction and reaction.is_running()):
 		return
 	idle_clock += delta
 	var breath := sin(idle_clock * (1.65 if sleeping else 2.75))
@@ -158,15 +162,49 @@ func refresh() -> void:
 		stat_readings[index].text = "%d%%" % roundi(value)
 
 func hit_pet(point: Vector2) -> bool:
-	var local := get_global_transform_with_canvas().affine_inverse() * point
-	var normalized := (local - PET_RECT.position) / PET_RECT.size
+	var normalized := (character.get_global_transform_with_canvas().affine_inverse() * point) / character.size
 	return ((normalized - Vector2(0.50, 0.56)) / Vector2(0.43, 0.43)).length_squared() <= 1.0
 
 func pet_point() -> Vector2:
-	return get_global_transform_with_canvas() * (PET_RECT.position + PET_RECT.size * Vector2(0.55, 0.43))
+	return character.get_global_transform_with_canvas() * (character.size * Vector2(0.55, 0.43))
 
 func heart_point() -> Vector2:
-	return get_global_transform_with_canvas() * (PET_RECT.position + PET_RECT.size * Vector2(0.76, 0.13))
+	return character.get_global_transform_with_canvas() * (character.size * Vector2(0.76, 0.13))
+
+func grab(point: Vector2) -> void:
+	holding = true
+	grab_start = get_global_transform_with_canvas().affine_inverse() * point
+	grab_offset = grab_start - character.position
+
+func drag_to(point: Vector2) -> void:
+	var local := get_global_transform_with_canvas().affine_inverse() * point
+	if not dragging and local.distance_to(grab_start) < 10.0:
+		return
+	if not dragging:
+		if reaction:
+			reaction.kill()
+		character.rotation = 0.0
+		character.scale = Vector2(0.94, 1.08)
+		dragging = true
+	character.position = (local - grab_offset).clamp(Vector2(8, 252), Vector2(DESIGN.x - character.size.x - 8, 918 - character.size.y))
+
+func release_grab() -> void:
+	holding = false
+	if dragging:
+		dragging = false
+		if reaction:
+			reaction.kill()
+		reaction = character.create_tween().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		reaction.tween_property(character, "scale", Vector2(1.13, 0.86), 0.10)
+		reaction.tween_property(character, "scale", Vector2(0.97, 1.04), 0.13)
+		reaction.tween_property(character, "scale", Vector2.ONE, 0.14)
+
+func shake() -> void:
+	if reaction:
+		reaction.kill()
+	reaction = character.create_tween().set_trans(Tween.TRANS_SINE)
+	for angle in [-0.16, 0.13, -0.08, 0.0]:
+		reaction.tween_property(character, "rotation", angle, 0.09)
 
 func react() -> void:
 	if reaction and reaction.is_running():

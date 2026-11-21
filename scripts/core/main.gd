@@ -18,6 +18,8 @@ var pointer_at := Vector2.ZERO
 var last_sample := Vector2.ZERO
 var sample_pending := false
 var ready_at := 0
+var last_acceleration := Vector3.ZERO
+var shake_ready_at := 0
 
 func _ready() -> void:
 	add_child(care)
@@ -64,6 +66,8 @@ func _ready() -> void:
 	)
 
 func _activity_changed(index: int) -> void:
+	hud.home.release_grab()
+	last_acceleration = Vector3.ZERO
 	evolin.set_activity(index)
 	room.set_feeding(index == 0)
 	if index in [-1, 1, 2]:
@@ -80,6 +84,9 @@ func _refresh_rest() -> void:
 	evolin.sleeping = sleeping
 	hud.home.sleeping = sleeping
 	hud.lamp_button.disabled = sleeping
+	if sleeping:
+		hud.home.release_grab()
+		last_acceleration = Vector3.ZERO
 	if sleeping != was_sleeping:
 		next_dream = 0.0
 		if room.night != sleeping:
@@ -87,7 +94,11 @@ func _refresh_rest() -> void:
 		was_sleeping = sleeping
 
 func _process(delta: float) -> void:
-	if not evolin.sleeping or hud.menu.mode != -1:
+	if hud.menu.mode != -1:
+		return
+	if not evolin.sleeping:
+		if OS.has_feature("mobile") and not OS.has_feature("web"):
+			_sample_acceleration(Input.get_accelerometer())
 		return
 	next_dream -= delta
 	if next_dream > 0.0:
@@ -95,7 +106,46 @@ func _process(delta: float) -> void:
 	next_dream = 1.26
 	hud.dream(hud.home.heart_point())
 
+func _sample_acceleration(value: Vector3) -> void:
+	if not value.is_zero_approx() and not last_acceleration.is_zero_approx() and value.distance_to(last_acceleration) > 13.0:
+		_shake()
+	last_acceleration = value
+
+func _shake() -> void:
+	var now := Time.get_ticks_msec()
+	if now < shake_ready_at or hud.home.holding or evolin.sleeping or hud.menu.mode != -1:
+		return
+	shake_ready_at = now + 1000
+	hud.home.shake()
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT and is_instance_valid(hud) and is_instance_valid(hud.home):
+		hud.home.release_grab()
+		last_acceleration = Vector3.ZERO
+
+func _input(event: InputEvent) -> void:
+	if not is_instance_valid(hud) or not is_instance_valid(hud.home) or not hud.home.holding:
+		return
+	if event is InputEventMouseMotion and event.button_mask & MOUSE_BUTTON_MASK_LEFT:
+		hud.home.drag_to(event.position)
+	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and not event.pressed:
+		if not event.canceled:
+			hud.home.drag_to(event.position)
+			_pet()
+		hud.home.release_grab()
+	else:
+		return
+	get_viewport().set_input_as_handled()
+
 func _unhandled_input(event: InputEvent) -> void:
+	if hud.menu.mode == -1:
+		if event is InputEventKey and event.keycode == KEY_SPACE and event.pressed and not event.echo:
+			_shake()
+		elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+			if not evolin.sleeping and hud.home.hit_pet(event.position):
+				hud.home.grab(event.position)
+				get_viewport().set_input_as_handled()
+		return
 	if hud.menu.mode in [0, 1, 2]:
 		return
 	# Godot maps the primary Android touch to mouse events for both UI and the room.
@@ -114,10 +164,6 @@ func _physics_process(_delta: float) -> void:
 	if not sample_pending:
 		return
 	sample_pending = false
-	if hud.menu.mode == -1:
-		if hud.home.hit_pet(pointer_at):
-			_pet()
-		return
 	var camera: Camera3D = room.camera
 	var origin := camera.project_ray_origin(pointer_at)
 	var end := origin + camera.project_ray_normal(pointer_at) * 20.0
@@ -137,7 +183,8 @@ func _pet() -> void:
 	care.affection()
 	evolin.pet()
 	if hud.menu.mode == -1:
-		hud.home.react()
+		if not hud.home.dragging:
+			hud.home.react()
 		hud.heart(hud.home.heart_point())
 	else:
 		hud.heart(room.camera.unproject_position(evolin.heart_origin.global_position))

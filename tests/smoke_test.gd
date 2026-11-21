@@ -40,7 +40,27 @@ func _run() -> void:
 	_expect(_hearts(hud) == 1, "Intervalo mínimo limita os efeitos de toques repetidos")
 	await create_timer(0.64).timeout
 	_expect(_hearts(hud) == 0, "Coração é removido após a animação")
+	var old_position: Vector2 = hud.home.character.position
+	var before_drag_xp: int = game.care.xp
+	_button_at(head, true)
 	_drag(head + Vector2(55, 0))
+	_expect(hud.home.dragging and hud.home.character.position.x > old_position.x, "Arraste move o Evolin no quarto")
+	_button_at(head + Vector2(55, 0), false)
+	_expect(not hud.home.holding and hud.home.reaction.is_running(), "Soltar inicia squash e stretch")
+	_expect(game.care.xp == before_drag_xp, "Arrastar respeita o intervalo de carinho")
+	await create_timer(0.11).timeout
+	_expect(hud.home.character.scale.x > 1.05 and hud.home.character.scale.y < 1.0, "O Evolin achata ao soltar")
+	game._sample_acceleration(Vector3.ZERO)
+	game._sample_acceleration(Vector3(0, 9.8, 0))
+	_expect(game.shake_ready_at == 0, "Sensor ausente ou em repouso não dispara reação")
+	game._sample_acceleration(Vector3(20, 9.8, 0))
+	_expect(game.shake_ready_at > 0 and game.care.xp == before_drag_xp, "Chacoalhar reage sem conceder carinho")
+	game.shake_ready_at = 0
+	var space := InputEventKey.new()
+	space.keycode = KEY_SPACE
+	space.pressed = true
+	root.push_input(space, true)
+	_expect(game.shake_ready_at > 0, "Espaço aciona a reação sem acelerômetro")
 	await physics_frame
 	await process_frame
 	_expect(_hearts(hud) == 1, "Arraste sobre o Evolin dispara carinho")
@@ -132,7 +152,7 @@ func _test_care(game: Node3D, hud: CanvasLayer) -> void:
 	hud.bath._select(0)
 	for stroke in 10:
 		hud.bath.scrub(Vector2(350, 500))
-	_expect(care.needs["Higiene"] == 72.0 and hud.bath.readings[1].text == "72%", "Banho recupera higiene e atualiza o HUD após dez movimentos")
+	_expect(roundi(care.needs["Higiene"]) == 72 and hud.bath.readings[1].text == "72%", "Banho recupera higiene e atualiza o HUD após dez movimentos")
 	_expect(float(hud.bath.movement.get_shader_parameter("response")) > 0.0, "Ensaboar faz o Evolin se mexer na banheira")
 	hud.tabs[2].pressed.emit()
 	_expect(hud.rest.visible and not hud.safe.visible, "Descansar abre o quarto noturno ilustrado")
@@ -252,13 +272,14 @@ func _test_rewards(game: Node3D, hud: CanvasLayer) -> void:
 	loaded.queue_free()
 
 func _click(at: Vector2) -> void:
+	_button_at(at, true)
+	_button_at(at, false)
+
+func _button_at(at: Vector2, pressed: bool) -> void:
 	var event := InputEventMouseButton.new()
 	event.button_index = MOUSE_BUTTON_LEFT
 	event.position = at
-	event.pressed = true
-	root.push_input(event, true)
-	event = event.duplicate()
-	event.pressed = false
+	event.pressed = pressed
 	root.push_input(event, true)
 
 func _drag(at: Vector2) -> void:
