@@ -40,9 +40,6 @@ func paint() -> void:
 		hud._label(hud.activity, Care.SICK_MESSAGE, 30).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		return
 	match mode:
-		3:
-			hud._label(hud.activity, "Toque ou deslize sobre o Evolin.", 30)
-			hud._button(hud.activity, "Fazer carinho", Color(COLORS[3])).pressed.connect(hud.pet_requested.emit)
 		4:
 			if jumping:
 				_pula_evo()

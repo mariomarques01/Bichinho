@@ -55,7 +55,7 @@ func _ready() -> void:
 		if not evolin.sleeping:
 			evolin.celebrate_pair(final_pair)
 			if final_pair:
-				hud.spark(room.camera.unproject_position(evolin.heart_origin.global_position))
+				hud.spark(hud.home.heart_point() if hud.home.visible else room.camera.unproject_position(evolin.heart_origin.global_position))
 	)
 	hud.food_eaten.connect(func() -> void:
 		sounds.play(&"mordida")
@@ -66,6 +66,8 @@ func _ready() -> void:
 			if not evolin.reaction or not evolin.reaction.is_running():
 				sounds.play(&"pulo")
 			evolin.jump()
+			if hud.home.visible:
+				hud.home.jump()
 	)
 	hud.lamp_requested.connect(func() -> void:
 		if care.rest_end == 0:
@@ -77,7 +79,7 @@ func _activity_changed(index: int) -> void:
 	last_acceleration = Vector3.ZERO
 	evolin.set_activity(index)
 	room.set_feeding(index == 0)
-	if index in [-1, 1, 2]:
+	if index in [-1, 1, 2, 4]:
 		room.camera.cull_mask = 0
 	sample_pending = false
 
@@ -101,7 +103,7 @@ func _refresh_rest() -> void:
 		was_sleeping = sleeping
 
 func _process(delta: float) -> void:
-	if hud.menu.mode >= 3 and (care.wardrobe.equipped.has(care.wardrobe.HAT) or care.wardrobe.equipped.has(care.wardrobe.GLASSES)):
+	if hud.menu.mode == 5 and (care.wardrobe.equipped.has(care.wardrobe.HAT) or care.wardrobe.equipped.has(care.wardrobe.GLASSES)):
 		var face := evolin.face
 		var eye := Vector3(0.35, 0.478 + 0.248 * 0.35, 0.142)
 		var first := room.camera.unproject_position(face.to_global(eye))
@@ -113,7 +115,7 @@ func _process(delta: float) -> void:
 		face_accessories.queue_redraw()
 	else:
 		face_accessories.hide()
-	if hud.menu.mode != -1:
+	if not hud.home.visible:
 		return
 	if not evolin.sleeping:
 		if read_motion_sensor:
@@ -135,7 +137,7 @@ func _sample_acceleration(value: Vector3) -> void:
 
 func _shake() -> void:
 	var now := Time.get_ticks_msec()
-	if now < shake_ready_at or hud.home.holding or evolin.sleeping or hud.menu.mode != -1:
+	if now < shake_ready_at or hud.home.holding or evolin.sleeping or not hud.home.visible:
 		return
 	shake_ready_at = now + 1000
 	hud.home.shake()
@@ -162,7 +164,7 @@ func _input(event: InputEvent) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if hud.wardrobe_screen.visible:
 		return
-	if hud.menu.mode == -1:
+	if hud.home.visible:
 		if event is InputEventKey and event.keycode == KEY_SPACE and event.pressed and not event.echo:
 			_shake()
 		elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
@@ -206,7 +208,7 @@ func _pet() -> void:
 	sounds.play(&"carinho")
 	care.affection()
 	evolin.pet()
-	if hud.menu.mode == -1:
+	if hud.home.visible:
 		if not hud.home.dragging:
 			hud.home.react()
 		hud.heart(hud.home.heart_point())

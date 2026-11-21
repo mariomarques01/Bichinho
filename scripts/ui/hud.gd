@@ -32,6 +32,9 @@ var feedback: Label
 var lamp_button: Button
 var feedback_time: Timer
 var activity: VBoxContainer
+var activity_parent: Control
+var room_games: VBoxContainer
+var room_result: Label
 var activity_card: PanelContainer
 var menu := Activities.new()
 var animation := preload("res://scripts/ui/hud_animation.gd").new()
@@ -59,6 +62,19 @@ func bind_care(care: Node) -> void:
 	home = Home.new()
 	$Interface.add_child(home)
 	home.setup(self, care)
+	room_games = VBoxContainer.new()
+	room_games.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	home.add_child(room_games)
+	room_games.position = Vector2(20, 925)
+	room_games.size.x = 680
+	room_games.minimum_size_changed.connect(func() -> void:
+		room_games.size.y = room_games.get_combined_minimum_size().y
+		room_games.position.y = 925 - room_games.size.y
+	)
+	room_result = _label(room_games, "", 26)
+	room_result.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	room_result.add_theme_constant_override("outline_size", 6)
+	room_result.hide()
 	sickness_icon = _label($Interface, "✚ Doente", 32)
 	sickness_icon.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
 	sickness_icon.add_theme_color_override("font_color", Color("#ffcbc8"))
@@ -144,11 +160,18 @@ func play_sound(key: StringName) -> void:
 
 func _open(index: int) -> void:
 	play_sound(&"toque")
-	var next := -1 if menu.mode == index else index
+	var next := -1 if index == 3 or menu.mode == index else index
+	var parent := room_games as Control if next == 4 else activity_parent
+	if activity_card.get_parent() != parent:
+		activity_card.reparent(parent, false)
+		if parent == activity_parent:
+			parent.move_child(activity_card, parent.get_child_count() - 2)
+	activity_card.visible = next in [4, 5]
+	room_games.visible = next == 4
+	room_result.hide()
 	menu.enter(next)
-	activity_card.visible = next > 2
-	safe.visible = next >= 3
-	home.visible = next == -1
+	safe.visible = next == 5
+	home.visible = next in [-1, 4]
 	if next == 0:
 		feeding.open()
 	else:
@@ -166,6 +189,8 @@ func _open(index: int) -> void:
 		tabs[i].set_pressed_no_signal(i == next)
 	feedback_time.stop()
 	feedback.text = "Toque ou deslize sobre o Evolin" if next < 0 else ""
+	if index == 3:
+		pet_requested.emit()
 
 
 func _ready() -> void:
@@ -241,6 +266,7 @@ func _build() -> void:
 	free_space.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	free_space.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	column.add_child(free_space)
+	activity_parent = column
 	activity_card = _panel(column, Color("#302143f5"))
 	activity_card.hide()
 	activity = VBoxContainer.new()
@@ -267,12 +293,16 @@ func _build() -> void:
 	feedback_time = Timer.new()
 	feedback_time.one_shot = true
 	feedback_time.timeout.connect(func() -> void: feedback.text = "Toque ou deslize sobre o Evolin" if menu.mode < 0 else "")
+	feedback_time.timeout.connect(func() -> void: room_result.hide())
 	add_child(feedback_time)
 
 func request_food_drop(food: String, at: Vector2) -> void:
 	food_drop.emit(food, at)
 
 func show_reaction(message: String) -> void:
+	if menu.mode == 4:
+		room_result.text = message
+		room_result.show()
 	feedback.text = message
 	feedback_time.start(2.0)
 

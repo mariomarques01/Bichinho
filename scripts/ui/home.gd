@@ -42,6 +42,7 @@ var idle_clock := 0.0
 var evolin: Evolin
 var eyelids := ShaderMaterial.new()
 var sleeping := false
+var hop: Tween
 var holding := false
 var dragging := false
 var grab_offset := Vector2.ZERO
@@ -138,7 +139,7 @@ func _build_navigation() -> void:
 
 	_sharp_picture(_navigation_art(NAV), Rect2(17, 1144, 686, 123))
 	_hit("Inventário", Rect2(156, 1160, 128, 92)).pressed.connect(hud.open_wardrobe)
-	_hit("Quarto", Rect2(288, 1146, 144, 113)).pressed.connect(func() -> void: hud.play_sound(&"toque"))
+	_hit("Quarto", Rect2(288, 1146, 144, 113)).pressed.connect(func() -> void: hud._open(-1))
 	_hit("Loja", Rect2(560, 1161, 143, 90)).pressed.connect(_open_store)
 
 func _open_store() -> void:
@@ -172,6 +173,8 @@ func heart_point() -> Vector2:
 	return character.get_global_transform_with_canvas() * (character.size * Vector2(0.76, 0.13))
 
 func grab(point: Vector2) -> void:
+	if hop and hop.is_running():
+		return
 	holding = true
 	grab_start = get_global_transform_with_canvas().affine_inverse() * point
 	grab_offset = grab_start - character.position
@@ -205,6 +208,14 @@ func shake() -> void:
 	reaction = character.create_tween().set_trans(Tween.TRANS_SINE)
 	for angle in [-0.16, 0.13, -0.08, 0.0]:
 		reaction.tween_property(character, "rotation", angle, 0.09)
+
+func jump() -> void:
+	if holding or (hop and hop.is_running()):
+		return
+	var floor_y := character.position.y
+	hop = character.create_tween().set_trans(Tween.TRANS_QUAD)
+	hop.tween_property(character, "position:y", floor_y - 68, 0.22).set_ease(Tween.EASE_OUT)
+	hop.tween_property(character, "position:y", floor_y, 0.26).set_ease(Tween.EASE_IN)
 
 func react() -> void:
 	if reaction and reaction.is_running():

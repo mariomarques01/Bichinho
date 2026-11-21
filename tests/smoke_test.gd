@@ -48,7 +48,7 @@ func _run() -> void:
 	_button_at(head + Vector2(55, 0), false)
 	_expect(not hud.home.holding and hud.home.reaction.is_running(), "Soltar inicia squash e stretch")
 	_expect(game.care.xp == before_drag_xp, "Arrastar respeita o intervalo de carinho")
-	await create_timer(0.11).timeout
+	hud.home.reaction.custom_step(0.10)
 	_expect(hud.home.character.scale.x > 1.05 and hud.home.character.scale.y < 1.0, "O Evolin achata ao soltar")
 	game._sample_acceleration(Vector3.ZERO)
 	game._sample_acceleration(Vector3(0, 9.8, 0))
@@ -170,7 +170,13 @@ func _test_care(game: Node3D, hud: CanvasLayer) -> void:
 	care.needs["Energia"] = 40.0
 	care.advance(care.rest_end)
 	_expect(care.needs["Energia"] > 60.0 and not game.evolin.sleeping, "Descanso recupera energia e termina")
-	hud.tabs[4].pressed.emit()
+	hud._open(3)
+	_expect(hud.home.visible and not hud.safe.visible and hud.menu.mode == -1, "Carinho volta do descanso para o quarto ilustrado")
+	hud.home.action_buttons[4].pressed.emit()
+	await hud.home.action_buttons[4].chosen
+	_expect(hud.home.visible and not hud.safe.visible and hud.activity_card.is_visible_in_tree(), "Brincar abre os jogos no próprio quarto")
+	await process_frame
+	_expect(hud.room_games.position.y > 240 and hud.room_games.get_rect().end.y <= 930, "Jogos deixam a navegação do quarto acessível")
 	hud.activity.get_child(2).get_child(1).pressed.emit()
 	await process_frame
 	var balance: int = care.coins
@@ -188,9 +194,9 @@ func _test_care(game: Node3D, hud: CanvasLayer) -> void:
 			rewards.append(child)
 	_expect(rewards.size() == 2, "Ganhos simultâneos mostram XP e moedas")
 	await create_timer(0.10).timeout
-	_expect(hud.coin_icon.scale.x > 1.0 and int(hud.home.coins.text) < care.coins, "A moeda cresce enquanto o saldo sobe")
+	_expect(hud.home.coin_icon.scale.x > 1.0 and int(hud.home.coins.text) < care.coins, "A moeda cresce enquanto o saldo sobe")
 	await create_timer(0.75).timeout
-	_expect(hud.coin_icon.scale.is_equal_approx(Vector2.ONE) and int(hud.home.coins.text) == care.coins, "Ícone e saldo terminam a animação")
+	_expect(hud.home.coin_icon.scale.is_equal_approx(Vector2.ONE) and int(hud.home.coins.text) == care.coins, "Ícone e saldo terminam a animação")
 	for reward in rewards:
 		_expect(not is_instance_valid(reward), "O número flutuante desaparece")
 	hud.tabs[5].pressed.emit()
