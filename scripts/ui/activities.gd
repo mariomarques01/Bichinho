@@ -136,6 +136,8 @@ func _pula_evo() -> void:
 			return
 		jumping = false
 		var reward := care.played(clampi(ceili(height / 15.0), 0, 6))
+		if reward > 0:
+			hud.play_sound(&"recompensa")
 		hud.show_reaction("Pula EVO · %d m · +%d moedas" % [height, reward])
 		paint.call_deferred()
 	, CONNECT_ONE_SHOT)

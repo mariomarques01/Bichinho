@@ -362,6 +362,7 @@ func serve(food: String, at: Vector2) -> void:
 	flight.tween_property(bite, "position", _mouth_position() - bite.size / 2, 0.25).set_ease(Tween.EASE_OUT)
 	flight.tween_callback(hud.food_eaten.emit)
 	flight.tween_callback(func() -> void:
+		hud.particles(canvas, _mouth_position(), Color("#ffcf87"), 9)
 		character.texture = eating_pose if food == "Maçã" else happy_pose
 		character.pivot_offset = character.size * Vector2(0.5, 1.0)
 	)

@@ -73,8 +73,13 @@ func _ready() -> void:
 	)
 	hud.lamp_requested.connect(func() -> void:
 		if care.rest_end == 0:
-			hud.set_night(room.toggle_lamp())
+			_toggle_night()
 	)
+
+func _toggle_night() -> void:
+	var night := room.toggle_lamp()
+	hud.set_night(night)
+	sounds.set_night(night)
 
 func _activity_changed(index: int) -> void:
 	hud.home.release_grab()
@@ -95,6 +100,7 @@ func _refresh_rest() -> void:
 		displayed_stage = care.evolution.stage
 		_show_growth(0.0)
 		if animate:
+			hud.particles(hud.get_node("Interface"), hud.get_viewport().get_visible_rect().size * Vector2(0.5, 0.45), care.evolution.tint(), 32)
 			if growth_tween:
 				growth_tween.kill()
 			growth_tween = create_tween()
@@ -111,10 +117,15 @@ func _refresh_rest() -> void:
 	if sleeping != was_sleeping:
 		next_dream = 0.0
 		if room.night != sleeping:
-			hud.set_night(room.toggle_lamp())
+			_toggle_night()
 		was_sleeping = sleeping
 
 func _process(delta: float) -> void:
+	var playing := hud.menu.mode == 4 and (hud.menu.jumping or not hud.menu.cards.is_empty())
+	var dragging := hud.home.dragging or hud.bath.dragging or is_instance_valid(hud.feeding.ghost)
+	var fps := 60 if playing or dragging else 30
+	if Engine.max_fps != fps:
+		Engine.max_fps = fps
 	if hud.menu.mode == 5 and (care.wardrobe.equipped.has(care.wardrobe.HAT) or care.wardrobe.equipped.has(care.wardrobe.GLASSES)):
 		var face := evolin.face
 		var eye := Vector3(0.35, 0.478 + 0.248 * 0.35, 0.142)

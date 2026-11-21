@@ -2,7 +2,10 @@ extends Node
 
 signal changed
 
-const SAVE_VERSION := 2
+const SAVE_VERSION := 3
+const CORRUPT_MESSAGE := "Save corrompido, progresso anterior não recuperado"
+var startup_message := ""
+var primary_valid := false
 const FOODS := {"Maçã": 15, "Banana": 20, "Frutas vermelhas": 12, "Sanduíche": 35, "Biscoito": 10}
 const MEDICINE := "Remédio"
 const SICK_MESSAGE := "Evolin está doente. Use um remédio para voltar a brincar."
@@ -24,12 +27,21 @@ var last_affection := 0
 var discoveries: Array[String] = []
 
 func _ready() -> void:
-	var file := ConfigFile.new()
-	var migrated := false
-	if file.load(save_path) == OK:
-		if int(file.get_value("care", "version", 0)) < SAVE_VERSION:
+	var file := _load_save(save_path)
+	primary_valid = file != null
+	var rewrite := false
+	if not primary_valid:
+		file = _load_save(save_path + ".bak")
+		rewrite = file != null
+	if file == null:
+		if FileAccess.file_exists(save_path) or FileAccess.file_exists(save_path + ".bak"):
+			startup_message = CORRUPT_MESSAGE
+		file = ConfigFile.new()
+	else:
+		var version := int(file.get_value("care", "version", 0))
+		if version < 2:
 			_migrate_save(file)
-			migrated = true
+		rewrite = rewrite or version < SAVE_VERSION
 		for key: String in needs:
 			needs[key] = clampf(float(file.get_value("needs", key, needs[key])), 0, 100)
 		for key: String in stock:
@@ -49,13 +61,23 @@ func _ready() -> void:
 	evolution.restore(file, needs, sick)
 	evolution.update(level_progress(xp).x)
 	advance(now())
-	if migrated or not file.has_section("evolution"):
+	if rewrite:
 		_save()
 	var timer := Timer.new()
 	timer.wait_time = 1.0
 	timer.autostart = true
 	timer.timeout.connect(func() -> void: advance(now()))
 	add_child(timer)
+
+func _load_save(path: String) -> ConfigFile:
+	if not FileAccess.file_exists(path):
+		return null
+	var file := ConfigFile.new()
+	if file.load(path) != OK or not file.has_section_key("care", "version"):
+		return null
+	if int(file.get_value("care", "version")) >= 3 and file.get_value("integrity", "complete", false) != true:
+		return null
+	return file
 
 func _migrate_save(file: ConfigFile) -> void:
 	var utc_day := int(file.get_value("care", "bonus_day", -1))
@@ -273,6 +295,20 @@ func _save() -> void:
 	file.set_value("care", "last_affection", last_affection)
 	file.set_value("care", "discoveries", discoveries)
 	evolution.save(file)
-	var error := file.save(save_path)
+	file.set_value("integrity", "complete", true)
+	var directory := DirAccess.open(save_path.get_base_dir())
+	if directory == null:
+		push_warning("Não foi possível abrir a pasta do save.")
+		return
+	var name := save_path.get_file()
+	var error := file.save(save_path + ".tmp")
+	if error == OK and primary_valid and directory.file_exists(name):
+		error = directory.copy(save_path, save_path + ".bak.tmp")
+		if error == OK:
+			error = directory.rename(name + ".bak.tmp", name + ".bak")
+	if error == OK:
+		error = directory.rename(name + ".tmp", name)
+		if error == OK:
+			primary_valid = true
 	if error != OK:
 		push_warning("Não foi possível salvar o progresso do Evolin.")

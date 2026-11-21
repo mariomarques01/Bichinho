@@ -29,6 +29,7 @@ var home: Home
 var level_banner: PanelContainer
 var stage_label: Label
 var sickness_icon: Label
+var transition: Tween
 var feedback: Label
 var lamp_button: Button
 var feedback_time: Timer
@@ -96,6 +97,10 @@ func bind_care(care: Node) -> void:
 	WardrobeArt.attach(rest.portrait, care.wardrobe, Vector2(273,508)/rest.DESIGN, Vector2(354,468)/rest.DESIGN)
 	$Interface.add_child(wardrobe_screen)
 	wardrobe_screen.setup(self, care)
+	wardrobe_screen.visibility_changed.connect(_transition)
+	if care.startup_message != "":
+		_show_startup_notice(care.startup_message)
+		care.startup_message = ""
 	safe.hide()
 	care.changed.connect(_refresh)
 	_refresh()
@@ -197,6 +202,7 @@ func _open(index: int) -> void:
 	else:
 		rest.close()
 	activity_changed.emit(next)
+	_transition()
 	for i in tabs.size():
 		tabs[i].set_pressed_no_signal(i == next)
 	feedback_time.stop()
@@ -308,6 +314,50 @@ func _build() -> void:
 	feedback_time.timeout.connect(func() -> void: room_result.hide())
 	add_child(feedback_time)
 
+func _transition() -> void:
+	var canvas: Control = $Interface
+	if transition:
+		transition.kill()
+	canvas.modulate.a = 0.45
+	canvas.position.x = 14.0
+	transition = create_tween().set_parallel().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	transition.tween_property(canvas, "modulate:a", 1.0, 0.2)
+	transition.tween_property(canvas, "position:x", 0.0, 0.2)
+
+func _show_startup_notice(message: String) -> void:
+	var panel := _panel($Interface, Color("#503568"))
+	panel.z_index = 30
+	var label := _label(panel, message, 30)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.custom_minimum_size.x = 540
+	panel.reset_size()
+	panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER, Control.PRESET_MODE_KEEP_SIZE)
+	var timer := panel.create_tween()
+	timer.tween_interval(4.0)
+	timer.tween_callback(panel.queue_free)
+
+func particles(parent: CanvasItem, at: Vector2, tint: Color, count: int) -> void:
+	var burst := CPUParticles2D.new()
+	burst.emitting = false
+	burst.one_shot = true
+	burst.amount = count
+	burst.explosiveness = 1.0
+	burst.lifetime = 0.55
+	burst.direction = Vector2.UP
+	burst.spread = 110.0
+	burst.initial_velocity_min = 55.0
+	burst.initial_velocity_max = 185.0
+	burst.gravity = Vector2(0, 160)
+	burst.scale_amount_min = 3.0
+	burst.scale_amount_max = 7.0
+	burst.color = tint
+	burst.position = at
+	burst.z_index = 12
+	parent.add_child(burst)
+	burst.finished.connect(burst.queue_free)
+	burst.emitting = true
+
 func request_food_drop(food: String, at: Vector2) -> void:
 	food_drop.emit(food, at)
 
@@ -343,25 +393,8 @@ func _show_level(level: int) -> void:
 	banner.set_anchors_and_offsets_preset(Control.PRESET_CENTER, Control.PRESET_MODE_KEEP_SIZE)
 	banner.pivot_offset = banner.size * 0.5
 	banner.scale = Vector2.ONE * 0.7
-	var sparks := GPUParticles2D.new()
-	sparks.emitting = false
-	sparks.amount = 24
-	sparks.one_shot = true
-	sparks.explosiveness = 1.0
-	sparks.lifetime = 0.85
-	sparks.position = banner.pivot_offset
-	var burst := ParticleProcessMaterial.new()
-	burst.particle_flag_disable_z = true
-	burst.spread = 180.0
-	burst.initial_velocity_min = 120.0
-	burst.initial_velocity_max = 290.0
-	burst.gravity = Vector3(0, 220, 0)
-	burst.scale_min = 3.0
-	burst.scale_max = 7.0
-	burst.color = Color("#ffdf90")
-	sparks.process_material = burst
-	banner.add_child(sparks)
-	sparks.emitting = true
+	preload("res://scripts/core/sounds.gd").vibrate()
+	particles(banner, banner.pivot_offset, Color("#ffdf90"), 24)
 	var tween := banner.create_tween()
 	tween.tween_property(banner, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.tween_interval(0.8)
