@@ -1,5 +1,6 @@
 extends CanvasLayer
 
+const WardrobeArt = preload("res://scripts/inventory/wardrobe_art.gd")
 const Activities = preload("res://scripts/ui/activities.gd")
 const Care = preload("res://scripts/needs/care.gd")
 
@@ -20,6 +21,7 @@ signal jump_requested
 signal lamp_requested
 
 @onready var safe: MarginContainer = $Interface/SafeArea
+var wardrobe_screen := preload("res://scripts/ui/wardrobe_screen.gd").new()
 var feeding: Feeding
 var bath: Bath
 var rest: Rest
@@ -62,6 +64,13 @@ func bind_care(care: Node) -> void:
 	sickness_icon.add_theme_color_override("font_color", Color("#ffcbc8"))
 	sickness_icon.add_theme_constant_override("outline_size", 6)
 	sickness_icon.hide()
+	WardrobeArt.attach(home.room_art, care.wardrobe)
+	WardrobeArt.attach(home.character, care.wardrobe, Vector2(0.341,0.419), Vector2(0.652,0.419))
+	WardrobeArt.attach(feeding.character, care.wardrobe, Vector2(0.486,0.419), Vector2(0.808,0.389))
+	WardrobeArt.attach(bath.portrait, care.wardrobe, Vector2(300,468)/bath.DESIGN, Vector2(422,441)/bath.DESIGN)
+	WardrobeArt.attach(rest.portrait, care.wardrobe, Vector2(273,508)/rest.DESIGN, Vector2(354,468)/rest.DESIGN)
+	$Interface.add_child(wardrobe_screen)
+	wardrobe_screen.setup(self, care)
 	safe.hide()
 	care.changed.connect(_refresh)
 	_refresh()
@@ -122,6 +131,13 @@ func _draw_profile() -> void:
 		bar.value = 100.0 * (state.y + shown_xp - xp) / state.z
 	for label: Label in [home.coins, feeding.wallet, bath.coins, rest.coins]:
 		label.text = str(coins)
+
+func open_wardrobe() -> void:
+	if menu.mode != -1:
+		_open(menu.mode)
+	home.release_grab()
+	wardrobe_screen.message.text = ""
+	wardrobe_screen.show()
 
 func play_sound(key: StringName) -> void:
 	sound_requested.emit(key)

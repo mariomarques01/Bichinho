@@ -137,7 +137,7 @@ func _build_navigation() -> void:
 		action_buttons.append(button)
 
 	_sharp_picture(_navigation_art(NAV), Rect2(17, 1144, 686, 123))
-	_hit("Inventário", Rect2(156, 1160, 128, 92)).pressed.connect(func() -> void: hud._open(0))
+	_hit("Inventário", Rect2(156, 1160, 128, 92)).pressed.connect(hud.open_wardrobe)
 	_hit("Quarto", Rect2(288, 1146, 144, 113)).pressed.connect(func() -> void: hud.play_sound(&"toque"))
 	_hit("Loja", Rect2(560, 1161, 143, 90)).pressed.connect(_open_store)
 

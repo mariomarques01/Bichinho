@@ -233,13 +233,7 @@ func _navigation(parent: Control) -> void:
 				hotspot.disabled = true
 				hotspot.focus_mode = Control.FOCUS_NONE
 			1:
-				hotspot.pressed.connect(func() -> void:
-					shopping = false
-					hud.play_sound(&"toque")
-					refresh()
-					message.text = "Inventário · selecione um alimento ou arraste."
-					cards[selected].grab_focus()
-				)
+				hotspot.pressed.connect(hud.open_wardrobe)
 			2:
 				hotspot.pressed.connect(func() -> void: hud._open(0))
 			4:

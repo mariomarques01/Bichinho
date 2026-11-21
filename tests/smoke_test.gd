@@ -98,6 +98,7 @@ func _run() -> void:
 	_test_sickness(game, hud)
 	_test_rewards(game, hud)
 	_test_local_day_and_sleep(game.care)
+	_test_wardrobe(game, hud)
 	_expect(game.sounds.players[&"mordida"].stream.get_length() > 0.0, "Áudio da mordida é carregado")
 	game.hud.play_sound(&"toque")
 	_expect(game.sounds.players[&"toque"].playing, "O HUD aciona o efeito de navegação")
@@ -302,6 +303,33 @@ func _test_local_day_and_sleep(profile: Node) -> void:
 	_expect(care.sick, "Exposição continua após acordar e ultrapassar meia hora")
 	DirAccess.remove_absolute(care.save_path)
 	care.queue_free()
+
+func _test_wardrobe(game: Node3D, hud: CanvasLayer) -> void:
+	var care = game.care
+	var model = care.wardrobe
+	var screen = hud.wardrobe_screen
+	for child in hud.home.get_children():
+		if child is Button and child.accessibility_name == "Inventário":
+			child.pressed.emit()
+	_expect(screen.visible and screen.buttons.size() == 9, "Guarda-roupa lista os nove itens")
+	care.coins = 19
+	screen.buttons["Boina"].pressed.emit()
+	_expect(care.coins == 19 and model.owned.is_empty(), "Sem saldo preserva o inventário")
+	care.coins = 200
+	for item in ["Boina", "Quadrados", "Bolinhas", "Cartola"]:
+		screen.buttons[item].pressed.emit()
+	_expect(care.coins == 65 and model.owned.size() == 4, "Compra debita o preço de cada item uma vez")
+	_expect(model.equipped[model.HAT] == "Cartola" and model.equipped.size() == 3, "Cada categoria mantém um único item equipado")
+	screen.buttons["Boina"].pressed.emit()
+	_expect(care.coins == 65 and screen.animation.pop_tween.is_running(), "Reequipar é gratuito e anima o Evolin")
+	var loaded = care.get_script().new()
+	loaded.save_path = care.save_path
+	root.add_child(loaded)
+	_expect(loaded.wardrobe.snapshot() == model.snapshot() and loaded.coins == 65, "Recarregar restaura roupas, papel de parede e saldo")
+	loaded.queue_free()
+	screen.buttons["Boina"].pressed.emit()
+	_expect(not model.equipped.has(model.HAT) and "Boina" in model.owned, "Retirar mantém o item comprado")
+	screen.hide()
 
 func _click(at: Vector2) -> void:
 	_button_at(at, true)

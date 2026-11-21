@@ -35,7 +35,7 @@ func _build_navigation(current: int, menu_top: float) -> void:
 		if index != current:
 			_hit(captions[index], Rect2(17 + 137 * index, menu_top, 135, 148)).pressed.connect(hud._open.bind(index))
 	_hit("Quarto", Rect2(281, 1089, 150, 167)).pressed.connect(hud._open.bind(current))
-	_hit("Inventário", Rect2(146, 1110, 131, 124)).pressed.connect(hud._open.bind(0))
+	_hit("Inventário", Rect2(146, 1110, 131, 124)).pressed.connect(hud.open_wardrobe)
 	_hit("Loja", Rect2(555, 1110, 142, 124)).pressed.connect(_open_store)
 	_hit("Loja de alimentos", Rect2(465, 10, 45, 49)).pressed.connect(_open_store)
 

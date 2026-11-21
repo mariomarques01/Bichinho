@@ -7,6 +7,7 @@ const FOODS := {"Maçã": 15, "Banana": 20, "Frutas vermelhas": 12, "Sanduíche"
 const MEDICINE := "Remédio"
 const SICK_MESSAGE := "Evolin está doente. Use um remédio para voltar a brincar."
 const DECAY := {"Fome": 0.12, "Higiene": 0.08, "Energia": 0.10, "Felicidade": 0.07}
+var wardrobe := preload("res://scripts/inventory/wardrobe.gd").new()
 var save_path := "user://care-v1.cfg"
 var needs := {"Fome": 68.0, "Higiene": 72.0, "Energia": 62.0, "Felicidade": 70.0}
 var stock := {"Maçã": 3, "Banana": 2, "Frutas vermelhas": 2, "Sanduíche": 1, "Biscoito": 2, MEDICINE: 0}
@@ -32,6 +33,7 @@ func _ready() -> void:
 			needs[key] = clampf(float(file.get_value("needs", key, needs[key])), 0, 100)
 		for key: String in stock:
 			stock[key] = maxi(0, int(file.get_value("stock", key, stock[key])))
+		wardrobe.restore(file.get_value("care", "wardrobe", {}))
 		sick = bool(file.get_value("care", "sick", false))
 		for key: String in low_seconds:
 			low_seconds[key] = maxf(0.0, float(file.get_value("low_seconds", key, 0.0)))
@@ -252,6 +254,7 @@ func _save() -> void:
 	for key: String in low_seconds:
 		file.set_value("low_seconds", key, low_seconds[key])
 	file.set_value("care", "sick", sick)
+	file.set_value("care", "wardrobe", wardrobe.snapshot())
 	file.set_value("care", "version", SAVE_VERSION)
 	file.set_value("care", "coins", coins)
 	file.set_value("care", "xp", xp)

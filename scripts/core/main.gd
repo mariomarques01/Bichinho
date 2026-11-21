@@ -10,6 +10,8 @@ const PET_LAYER := 2
 @onready var room: Room = $Room
 @onready var evolin: Evolin = $Evolin
 @onready var hud: HUD = $HUD
+const WardrobeArt = preload("res://scripts/inventory/wardrobe_art.gd")
+var face_accessories: WardrobeArt
 var care := Care.new()
 var sounds := Sounds.new()
 var was_sleeping := false
@@ -27,6 +29,10 @@ func _ready() -> void:
 	add_child(sounds)
 	hud.sound_requested.connect(sounds.play)
 	hud.bind_care(care)
+	var canvas: Control = hud.get_node("Interface")
+	face_accessories = WardrobeArt.attach(canvas, care.wardrobe, Vector2.LEFT, Vector2.RIGHT)
+	canvas.move_child(face_accessories, 0)
+	face_accessories.hide()
 	hud.home.evolin = evolin
 	hud.feeding.evolin = evolin
 	hud.activity_changed.connect(_activity_changed)
@@ -95,6 +101,18 @@ func _refresh_rest() -> void:
 		was_sleeping = sleeping
 
 func _process(delta: float) -> void:
+	if hud.menu.mode >= 3 and (care.wardrobe.equipped.has(care.wardrobe.HAT) or care.wardrobe.equipped.has(care.wardrobe.GLASSES)):
+		var face := evolin.face
+		var eye := Vector3(0.35, 0.478 + 0.248 * 0.35, 0.142)
+		var first := room.camera.unproject_position(face.to_global(eye))
+		eye.z = -eye.z
+		var second := room.camera.unproject_position(face.to_global(eye))
+		face_accessories.left_eye = (first if first.x < second.x else second) / face_accessories.size
+		face_accessories.right_eye = (second if first.x < second.x else first) / face_accessories.size
+		face_accessories.show()
+		face_accessories.queue_redraw()
+	else:
+		face_accessories.hide()
 	if hud.menu.mode != -1:
 		return
 	if not evolin.sleeping:
@@ -142,6 +160,8 @@ func _input(event: InputEvent) -> void:
 	get_viewport().set_input_as_handled()
 
 func _unhandled_input(event: InputEvent) -> void:
+	if hud.wardrobe_screen.visible:
+		return
 	if hud.menu.mode == -1:
 		if event is InputEventKey and event.keycode == KEY_SPACE and event.pressed and not event.echo:
 			_shake()
