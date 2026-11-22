@@ -30,6 +30,25 @@ A tela usa a arte original do quarto noturno e os acessórios do atlas. O Evolin
 
 O Evolin pisca quando está acordado e parado, inclusive nas telas ilustradas. Ele respira no quarto, alterna a pose de mordida e mastigação ao comer, reage ao toque durante o banho e se encolhe com respiração mais lenta ao dormir. Carinho dispara o balanço e os corações. Pares de Memória Mágica acionam pulos, com comemoração maior no último par. Experimentar inclina o Evolin ao selecionar ingredientes e aciona um pulo com brilho ao misturar.
 
+## Estados do Evolin
+
+`scripts/pet/evolin_state.gd` resolve os estados para as telas 2D e para o modelo 3D. O descanso ativo seleciona `dormindo` e encerra reações temporárias. A ordem das reações é `comendo` e `tomando_banho`, depois `comemorando`, `brincando` e `feliz`. Entre reações de mesma prioridade, vale a mais recente. Ao terminar uma reação, o Evolin volta a consultar as necessidades.
+
+Com o Evolin acordado e sem reação ativa, a primeira condição atendida define o estado.
+
+| Ordem | Condição | Estado |
+| --- | --- | --- |
+| 1 | Higiene ≤ 35 | `sujo` |
+| 2 | Fome ≤ 35 | `com_fome` |
+| 3 | Energia ≤ 35 | `cansado` |
+| 4 | Felicidade ≤ 35 | `triste` |
+| 5 | Felicidade ≥ 80 | `feliz` |
+| 6 | Demais valores | `idle` |
+
+O sinal `state_changed(anterior, atual)` é emitido pelo controlador em cada troca efetiva. O crossfade 2D e o tween de expressão 3D duram 0,20 s. As reações usam os movimentos existentes de mastigação, banho, sono e pulo.
+
+Para personalizar as poses, abra `resources/pet/evolin_poses.tres` no Inspector e troque as texturas no campo `Poses`. O enquadramento atual usa as poses quadradas de 1024 × 1024. Uma entrada vazia usa `idle`. Comer reutiliza a pose com fome, dormir reutiliza a pose cansada, e banho e brincadeira reutilizam a pose feliz, com o movimento de cada atividade.
+
 ## Sons
 
 O EVO usa efeitos curtos e originais em WAV para menus, comida, mordida, carinho, bolhas, pulo, descanso e recompensas. Os efeitos acompanham as ações e usam volume moderado. No navegador, o áudio começa após a primeira interação.
@@ -46,6 +65,11 @@ O EVO usa efeitos curtos e originais em WAV para menus, comida, mordida, carinho
 | Documentação | `README.md`, `docs/PLANO_TECNICO.md` |
 
 ## Testes executados
+
+- Sistema de estados validado com Godot 4.7.2 headless, a versão instalada no ambiente. A importação, a inicialização por 50 quadros e o smoke test retornaram código 0. O smoke test passou em 235 verificações, incluindo prioridade, sinal, troca de textura pelo Resource, interrupção de crossfade e integração com as atividades.
+- Tanto na revisão original quanto na atual, o Godot 4.7.2 headless relatou recursos WAV ainda em uso ao encerrar a inicialização e duas mensagens de material nulo do renderizador dummy no smoke test. Godot 4.6.3 e os exports Web e Android ficaram sem validação neste incremento.
+
+### Verificações anteriores
 
 - Importação por `godot --headless --editor --path . --import`.
 - Inicialização da cena principal por `godot --headless --path . --quit-after 50`.

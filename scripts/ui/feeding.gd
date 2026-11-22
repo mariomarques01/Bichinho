@@ -1,4 +1,5 @@
 extends MarginContainer
+const State = preload("res://scripts/pet/evolin_state.gd")
 const PoseView = preload("res://scripts/pet/evolin_poses.gd")
 const PoseScene = preload("res://scenes/pet/evolin_poses.tscn")
 
@@ -247,8 +248,7 @@ func close() -> void:
 		serving_icon.queue_free()
 	animating = false
 	character.scale = Vector2.ONE
-	poses.hold = 0
-	poses.refresh()
+	poses.cancel_reaction()
 	_cancel_drag()
 
 func refresh() -> void:
@@ -338,7 +338,7 @@ func serve(food: String, at: Vector2) -> void:
 	flight.tween_callback(hud.food_eaten.emit)
 	flight.tween_callback(func() -> void:
 		hud.particles(canvas, _mouth_position(), Color("#ffcf87"), 9)
-		poses.react("happy", 0.7, 0)
+		poses.react(State.EATING, 0.7, 0)
 		character.pivot_offset = character.size * Vector2(0.5, 1.0)
 	)
 	flight.parallel().tween_property(character, "scale", Vector2(1.04, 0.96), 0.13)

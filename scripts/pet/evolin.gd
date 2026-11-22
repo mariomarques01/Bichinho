@@ -2,6 +2,7 @@ extends Node3D
 
 signal reacted(message: String)
 
+const State = preload("res://scripts/pet/evolin_state.gd")
 const EYELID_SHADER = preload("res://scripts/pet/eyelids.gdshader")
 const BLINK_INTERVAL := 4.1
 const BLINK_DURATION := 0.24
@@ -11,8 +12,12 @@ const AFFECTION_DURATION := 0.82
 @onready var pose: Node3D = $Rig/Pose
 @onready var heart_origin: Marker3D = $Rig/HeartOrigin
 
-enum Mood { NEUTRO, FAMINTO, SUJO, SONOLENTO, FELIZ, DOENTE }
+enum Mood { NEUTRO, FAMINTO, SUJO, SONOLENTO, FELIZ, DOENTE, TRISTE }
 
+var state := State.new()
+var care: Node
+var mood_blend: Tween
+var expression := Vector3.ZERO
 var sprite_factor := 1.0
 var mood := Mood.NEUTRO
 var idle_wait := randf_range(6.0, 12.0)
@@ -40,6 +45,7 @@ var tail_rest := Quaternion.IDENTITY
 var tail_axis := Vector3.UP
 
 func _ready() -> void:
+	add_child(state)
 	face = $Rig/Pose/Model.find_children("*", "MeshInstance3D", true, false)[0] as MeshInstance3D
 	eyelids.shader = EYELID_SHADER
 	var material := face.get_active_material(0).duplicate() as StandardMaterial3D
@@ -63,22 +69,42 @@ func _ready() -> void:
 				tail_axis = (skeleton.get_bone_global_rest(index).basis.inverse() * Vector3.UP).normalized()
 				break
 
-func set_mood(needs: Dictionary, sick := false) -> void:
-	if sick:
-		mood = Mood.DOENTE
-		return
-	var lowest := minf(needs["Energia"], minf(needs["Fome"], needs["Higiene"]))
-	if lowest <= 35.0:
-		if needs["Energia"] == lowest:
-			mood = Mood.SONOLENTO
-		elif needs["Fome"] == lowest:
-			mood = Mood.FAMINTO
-		else:
-			mood = Mood.SUJO
-	elif needs["Felicidade"] >= 60.0:
-		mood = Mood.FELIZ
+func bind_care(profile: Node) -> void:
+	care = profile
+	state.setup(care)
+	state.state_changed.connect(func(_previous: StringName, _current: StringName) -> void:
+		_refresh_expression()
+	)
+	care.changed.connect(_refresh_expression)
+	_refresh_expression()
+
+func _refresh_expression() -> void:
+	var target := Mood.NEUTRO
+	if care.sick:
+		target = Mood.DOENTE
 	else:
-		mood = Mood.NEUTRO
+		match state.current:
+			State.TIRED: target = Mood.SONOLENTO
+			State.HUNGRY: target = Mood.FAMINTO
+			State.DIRTY: target = Mood.SUJO
+			State.SAD: target = Mood.TRISTE
+			State.HAPPY, State.BATHING, State.PLAYING, State.CELEBRATING: target = Mood.FELIZ
+	sleeping = state.current == State.SLEEPING
+	if target == mood:
+		return
+	mood = target
+	var base := Vector3.ZERO
+	match mood:
+		Mood.DOENTE: base = Vector3(0.72, 0.14, 0.0)
+		Mood.FAMINTO: base.x = 0.52
+		Mood.SUJO: base = Vector3(0.32, -0.10, 0.0)
+		Mood.SONOLENTO: base.x = 0.45
+		Mood.TRISTE: base = Vector3(0.55, 0.08, 0.0)
+		Mood.FELIZ: base.z = 1.0
+	if mood_blend:
+		mood_blend.kill()
+	mood_blend = create_tween().set_trans(Tween.TRANS_SINE)
+	mood_blend.tween_property(self, "expression", base, 0.20)
 
 func _update_idle(delta: float) -> void:
 	look = 0.0
@@ -104,17 +130,10 @@ func _update_idle(delta: float) -> void:
 		yawn = pow(maxf(0.0, cos(time * TAU / 5.0)), 4.0)
 
 func _mood_closure() -> float:
-	match mood:
-		Mood.DOENTE: return 0.72
-		Mood.FAMINTO: return 0.52
-		Mood.SUJO: return 0.32
-		Mood.SONOLENTO: return 0.45 + yawn * 0.5
-	return 0.0
+	return expression.x + yawn * 0.5
 
 func _tilt() -> float:
-	if mood == Mood.DOENTE:
-		return 0.14 + sin(time * 16.0) * 0.019
-	return -0.10 if mood == Mood.SUJO else 0.0
+	return expression.y + (sin(time * 16.0) * 0.019 if mood == Mood.DOENTE else 0.0)
 
 func pose_sprite(sprite: TextureRect, blink: float, breath: Vector2, sway: float) -> void:
 	var lids := sprite.material as ShaderMaterial
@@ -124,9 +143,11 @@ func pose_sprite(sprite: TextureRect, blink: float, breath: Vector2, sway: float
 	sprite.scale = (breath + Vector2(-0.04, 0.10) * stretch) * sprite_factor
 
 func _process(delta: float) -> void:
+	if care:
+		state.advance(delta)
 	time += delta
 	delight = maxf(0.0, delight - delta)
-	rest_weight = move_toward(rest_weight, 1.0 if sleeping else 0.0, delta * 2.5)
+	rest_weight = move_toward(rest_weight, 1.0 if sleeping else 0.0, delta / 0.20)
 	curious = move_toward(curious, 0.0, delta * 1.6)
 	surprise = move_toward(surprise, 0.0, delta * 1.5)
 	_update_idle(delta)
@@ -153,25 +174,29 @@ func _update_eyelids(delta: float) -> void:
 	var blink_phase := clampf((blink_elapsed - BLINK_INTERVAL + BLINK_DURATION) / BLINK_DURATION, 0.0, 1.0)
 	var blink := sin(blink_phase * PI)
 	var affection := smoothstep(0.0, 0.15, delight) * (1.0 - smoothstep(0.67, AFFECTION_DURATION, delight))
-	var closure := 1.0 if sleeping else maxf(maxf(blink, affection), _mood_closure())
-	var smile := mood == Mood.FELIZ and not sleeping and chew <= 0.0
+	var closure := lerpf(maxf(maxf(blink, affection), _mood_closure()), 1.0, rest_weight)
+	var smile := expression.z * (1.0 - rest_weight) if chew <= 0.0 else 0.0
 	eyelids.set_shader_parameter("smile", smile)
 	eyelids.set_shader_parameter("yawn", yawn)
-	if closure > 0.001 or smile:
-		eyelids.set_shader_parameter("closure", closure)
+	eyelids.set_shader_parameter("closure", closure)
+	if closure > 0.001 or smile > 0.001:
 		face.material_overlay = eyelids
 	elif face.material_overlay:
 		face.material_overlay = null
 
 func pet() -> void:
+	state.react(State.HAPPY, AFFECTION_DURATION)
 	delight = AFFECTION_DURATION
 	reacted.emit("Evolin adorou o carinho!")
 
 func eat() -> void:
+	state.react(State.EATING, 0.64)
 	chew = 0.64
 	delight = AFFECTION_DURATION
 
 func set_activity(index: int) -> void:
+	if care and activity != index and state.current in [State.EATING, State.PLAYING]:
+		state.cancel()
 	activity = index
 	curious = 0.0
 	surprise = 0.0
@@ -183,17 +208,20 @@ func inspect_ingredient() -> void:
 	curious = 0.85
 
 func discover() -> void:
+	state.react(State.CELEBRATING, 0.9)
 	curious = 0.0
 	surprise = 0.9
 	_hop(0.23, 1)
 
 func celebrate_pair(final_pair: bool) -> void:
+	state.react(State.CELEBRATING if final_pair else State.PLAYING, 1.08 if final_pair else 0.54)
 	delight = 0.65 if final_pair else 0.36
 	_hop(0.38 if final_pair else 0.16, 2 if final_pair else 1)
 
 func jump() -> void:
 	if reaction and reaction.is_running():
 		return
+	state.react(State.PLAYING, 0.54)
 	_hop(0.55, 1)
 	reacted.emit("Evolin deu um pulinho!")
 
