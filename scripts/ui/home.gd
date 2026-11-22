@@ -1,16 +1,13 @@
 extends Control
-
-const Evolin = preload("res://scripts/pet/evolin.gd")
+const PoseView = preload("res://scripts/pet/evolin_poses.gd")
+const PoseScene = preload("res://scenes/pet/evolin_poses.tscn")
 
 const Action = preload("res://scripts/ui/home_action.gd")
 const SHARPEN = preload("res://scripts/ui/home_sharpen.gdshader")
-const Blink = preload("res://scripts/pet/blink.gd")
-const SPRITE_BLINK = preload("res://scripts/ui/sprite_blink.gdshader")
 const Care = preload("res://scripts/needs/care.gd")
 const SHEET = preload("res://assets/textures/home/atlas.jpg")
 const DESIGN := Vector2(720, 1280)
-const PET_RECT := Rect2(110, 373, 365, 430)
-const PET := Rect2i(29, 89, 305, 371)
+const PET_RECT := Rect2(30, 304, 530, 530)
 const ROOM := Rect2(13, 508, 566, 515)
 const PROFILE := Rect2(600, 94, 373, 101)
 const WALLET := Rect2(983, 110, 172, 58)
@@ -22,6 +19,7 @@ const STAT_RECTS := [
 ]
 const ACTION_NAMES := ["Alimentar", "Higienizar", "Descansar", "Carinho", "Brincar", "Experimentar"]
 
+var poses: PoseView
 var hud: CanvasLayer
 var care: Care
 var character: TextureRect
@@ -38,11 +36,6 @@ var stat_bars: Array[ProgressBar] = []
 var action_buttons: Array[Action] = []
 var sharpen := ShaderMaterial.new()
 var reaction: Tween
-var idle_clock := 0.0
-var evolin: Evolin
-var eyelids := ShaderMaterial.new()
-var sleeping := false
-var hop: Tween
 var holding := false
 var dragging := false
 var grab_offset := Vector2.ZERO
@@ -61,13 +54,6 @@ func setup(owner_hud: CanvasLayer, profile: Care) -> void:
 	get_parent().resized.connect(_frame)
 	_frame()
 	refresh()
-
-func _process(delta: float) -> void:
-	if not visible or dragging or (reaction and reaction.is_running()):
-		return
-	idle_clock += delta
-	var breath := sin(idle_clock * (1.65 if sleeping else 2.75))
-	evolin.pose_sprite(character, Blink.closure(idle_clock), Vector2(1.0 - breath * 0.012, 1.0 + breath * 0.022), sin(idle_clock * 1.45) * 0.020)
 
 func _frame() -> void:
 	scale = get_parent().size / DESIGN
@@ -97,13 +83,10 @@ func _build_room() -> void:
 	shade_texture.fill_from = Vector2(0.5, 0.5)
 	shade_texture.fill_to = Vector2(1.0, 0.5)
 	_picture(shade_texture, Rect2(143, 765, 296, 63))
-	character = _picture(_cutout(PET), PET_RECT)
-	eyelids.shader = SPRITE_BLINK
-	eyelids.set_shader_parameter("mouth_center", Vector2(0.49, 0.55))
-	eyelids.set_shader_parameter("left_eye", Vector4(0.341, 0.419, 0.111, 0.087))
-	eyelids.set_shader_parameter("right_eye", Vector4(0.652, 0.419, 0.111, 0.087))
-	eyelids.set_shader_parameter("lid_color", Color("#2ad1d1"))
-	character.material = eyelids
+	character = _picture(null, PET_RECT)
+	poses = PoseScene.instantiate()
+	character.add_child(poses)
+	poses.setup(care)
 	character.pivot_offset = PET_RECT.size * Vector2(0.5, 1.0)
 	_hit("Luminária", Rect2(618, 399, 94, 240)).pressed.connect(_lamp)
 
@@ -173,8 +156,6 @@ func heart_point() -> Vector2:
 	return character.get_global_transform_with_canvas() * (character.size * Vector2(0.76, 0.13))
 
 func grab(point: Vector2) -> void:
-	if hop and hop.is_running():
-		return
 	holding = true
 	grab_start = get_global_transform_with_canvas().affine_inverse() * point
 	grab_offset = grab_start - character.position
@@ -210,24 +191,12 @@ func shake() -> void:
 		reaction.tween_property(character, "rotation", angle, 0.09)
 
 func jump() -> void:
-	if holding or (hop and hop.is_running()):
+	if holding:
 		return
-	var floor_y := character.position.y
-	hop = character.create_tween().set_trans(Tween.TRANS_QUAD)
-	hop.tween_property(character, "position:y", floor_y - 68, 0.22).set_ease(Tween.EASE_OUT)
-	hop.tween_property(character, "position:y", floor_y, 0.26).set_ease(Tween.EASE_IN)
+	poses.react(poses.pose, 0.48, 1)
 
 func react() -> void:
-	if reaction and reaction.is_running():
-		reaction.kill()
-	character.scale = Vector2.ONE
-	character.rotation = 0.0
-	eyelids.set_shader_parameter("closure", 1.0)
-	reaction = create_tween()
-	reaction.tween_property(character, "scale", Vector2(1.055, 0.94), 0.13)
-	reaction.parallel().tween_property(character, "rotation", -0.065, 0.13)
-	reaction.tween_property(character, "scale", Vector2.ONE, 0.31).set_trans(Tween.TRANS_BACK)
-	reaction.parallel().tween_property(character, "rotation", 0.0, 0.25)
+	poses.react("happy", 2.0, 1)
 
 func _atlas(region: Rect2) -> AtlasTexture:
 	var art := AtlasTexture.new()
@@ -309,27 +278,4 @@ func _navigation_art(region: Rect2i) -> ImageTexture:
 			var color := image.get_pixel(x, y)
 			color.a = mask
 			image.set_pixel(x, y, color)
-	return ImageTexture.create_from_image(image)
-
-func _cutout(region: Rect2i) -> ImageTexture:
-	var image := SHEET.get_image().get_region(region)
-	image.convert(Image.FORMAT_RGBA8)
-	var fill: Array[Vector2i] = []
-	for x in region.size.x:
-		fill.append(Vector2i(x, 0))
-		fill.append(Vector2i(x, region.size.y - 1))
-	for y in region.size.y:
-		fill.append(Vector2i(0, y))
-		fill.append(Vector2i(region.size.x - 1, y))
-	var bounds := Rect2i(Vector2i.ZERO, region.size)
-	while not fill.is_empty():
-		var pixel: Vector2i = fill.pop_back()
-		if not bounds.has_point(pixel):
-			continue
-		var color := image.get_pixelv(pixel)
-		if color.a == 0 or color.r > 0.37 or color.g > 0.28 or color.b > 0.51:
-			continue
-		image.set_pixelv(pixel, Color.TRANSPARENT)
-		for offset in [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]:
-			fill.append(pixel + offset)
 	return ImageTexture.create_from_image(image)

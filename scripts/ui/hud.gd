@@ -91,10 +91,6 @@ func bind_care(care: Node) -> void:
 	sickness_icon.position.y = 36
 	sickness_icon.hide()
 	WardrobeArt.attach(home.room_art, care.wardrobe)
-	WardrobeArt.attach(home.character, care.wardrobe, Vector2(0.341,0.419), Vector2(0.652,0.419))
-	WardrobeArt.attach(feeding.character, care.wardrobe, Vector2(0.486,0.419), Vector2(0.808,0.389))
-	WardrobeArt.attach(bath.portrait, care.wardrobe, Vector2(300,468)/bath.DESIGN, Vector2(422,441)/bath.DESIGN)
-	WardrobeArt.attach(rest.portrait, care.wardrobe, Vector2(273,508)/rest.DESIGN, Vector2(354,468)/rest.DESIGN)
 	$Interface.add_child(wardrobe_screen)
 	wardrobe_screen.setup(self, care)
 	wardrobe_screen.visibility_changed.connect(_transition)

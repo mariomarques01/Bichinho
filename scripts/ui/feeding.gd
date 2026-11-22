@@ -1,10 +1,8 @@
 extends MarginContainer
-
-const Evolin = preload("res://scripts/pet/evolin.gd")
+const PoseView = preload("res://scripts/pet/evolin_poses.gd")
+const PoseScene = preload("res://scenes/pet/evolin_poses.tscn")
 
 const Activities = preload("res://scripts/ui/activities.gd")
-const Blink = preload("res://scripts/pet/blink.gd")
-const SPRITE_BLINK = preload("res://scripts/ui/sprite_blink.gdshader")
 const Care = preload("res://scripts/needs/care.gd")
 const REFERENCE = preload("res://assets/textures/feeding/referencia.jpg")
 const SHEET = preload("res://assets/textures/feeding/sprites.jpg")
@@ -21,9 +19,6 @@ const TABS := [
 	Rect2(565, 957, 138, 143),
 ]
 const FOOD_NAMES := {"Sanduíche": "Carne", "Biscoito": "Cupcake"}
-const IDLE := Rect2i(16, 13, 180, 187)
-const EATING := Rect2i(391, 13, 175, 185)
-const HAPPY := Rect2i(211, 13, 174, 182)
 const TITLE := Rect2i(782, 170, 247, 70)
 const FOOD_ART := {
 	"Maçã": Rect2(29, 428, 79, 65),
@@ -33,6 +28,7 @@ const FOOD_ART := {
 	"Frutas vermelhas": Rect2(440, 428, 82, 67),
 }
 
+var poses: PoseView
 var hud: CanvasLayer
 var care: Care
 var selected := "Maçã"
@@ -51,17 +47,11 @@ var press_position := Vector2.ZERO
 var pointer_food := ""
 var ghost: TextureRect
 var animating := false
-var idle_clock := 0.0
-var evolin: Evolin
-var eyelids := ShaderMaterial.new()
 var food_motion: Tween
 var serving_icon: TextureRect
 var shopping := false
 var character: TextureRect
 var contact_shadow: TextureRect
-var idle_pose: Texture2D
-var eating_pose: Texture2D
-var happy_pose: Texture2D
 
 func setup(owner_hud: CanvasLayer, manager: Care) -> void:
 	hud = owner_hud
@@ -69,9 +59,6 @@ func setup(owner_hud: CanvasLayer, manager: Care) -> void:
 	canvas = get_parent()
 	for name in FOOD_ART:
 		art[name] = _sprite(Rect2i(FOOD_ART[name]), true)
-	idle_pose = _sprite(IDLE)
-	eating_pose = _sprite(EATING)
-	happy_pose = _sprite(HAPPY)
 	var gradient := Gradient.new()
 	gradient.offsets = PackedFloat32Array([0.0, 0.45, 1.0])
 	gradient.colors = PackedColorArray([Color("#34113470"), Color("#3411343a"), Color("#34113400")])
@@ -83,13 +70,10 @@ func setup(owner_hud: CanvasLayer, manager: Care) -> void:
 	contact_shadow = _icon(canvas, shadow_texture, Vector2.ZERO)
 	contact_shadow.stretch_mode = TextureRect.STRETCH_SCALE
 	contact_shadow.z_index = -2
-	character = _icon(canvas, idle_pose, Vector2.ZERO)
-	eyelids.shader = SPRITE_BLINK
-	eyelids.set_shader_parameter("mouth_center", Vector2(0.68, 0.54))
-	eyelids.set_shader_parameter("left_eye", Vector4(0.486, 0.419, 0.133, 0.113))
-	eyelids.set_shader_parameter("right_eye", Vector4(0.808, 0.389, 0.083, 0.107))
-	eyelids.set_shader_parameter("lid_color", Color("#49dbc9"))
-	character.material = eyelids
+	character = _icon(canvas, null, Vector2.ZERO)
+	poses = PoseScene.instantiate()
+	character.add_child(poses)
+	poses.setup(care)
 	character.z_index = -1
 	canvas.resized.connect(_frame_character)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -263,16 +247,9 @@ func close() -> void:
 		serving_icon.queue_free()
 	animating = false
 	character.scale = Vector2.ONE
-	character.texture = idle_pose
+	poses.hold = 0
+	poses.refresh()
 	_cancel_drag()
-
-func _process(delta: float) -> void:
-	if not visible or animating:
-		return
-	idle_clock += delta
-	var breath := sin(idle_clock * 3.4)
-	character.pivot_offset = character.size * Vector2(0.5, 1.0)
-	evolin.pose_sprite(character, Blink.closure(idle_clock), Vector2(1.0 - breath * 0.008, 1.0 + breath * 0.018), 0.0)
 
 func refresh() -> void:
 	var doses := int(care.stock[Care.MEDICINE])
@@ -347,8 +324,6 @@ func serve(food: String, at: Vector2) -> void:
 		return
 	animating = true
 	character.rotation = 0.0
-	eyelids.set_shader_parameter("mouth_shape", 0.0)
-	eyelids.set_shader_parameter("closure", 0.0)
 	hud.play_sound(&"comida")
 	refresh()
 	var bite := _icon(canvas, art[food], Vector2.ZERO)
@@ -363,7 +338,7 @@ func serve(food: String, at: Vector2) -> void:
 	flight.tween_callback(hud.food_eaten.emit)
 	flight.tween_callback(func() -> void:
 		hud.particles(canvas, _mouth_position(), Color("#ffcf87"), 9)
-		character.texture = eating_pose if food == "Maçã" else happy_pose
+		poses.react("happy", 0.7, 0)
 		character.pivot_offset = character.size * Vector2(0.5, 1.0)
 	)
 	flight.parallel().tween_property(character, "scale", Vector2(1.04, 0.96), 0.13)
@@ -371,7 +346,6 @@ func serve(food: String, at: Vector2) -> void:
 	flight.parallel().tween_property(bite, "modulate:a", 0.0, 0.20)
 	flight.tween_callback(bite.queue_free)
 	flight.tween_method(_chew_pose, 0.0, 1.0, 0.44)
-	flight.tween_callback(func() -> void: character.texture = idle_pose)
 	flight.tween_callback(func() -> void:
 		animating = false
 		refresh()
@@ -394,7 +368,7 @@ func _frame_character() -> void:
 	contact_shadow.position = character.position + character.size * Vector2(0.12, 0.88)
 
 func _mouth_position() -> Vector2:
-	return character.position + character.size * Vector2(0.69, 0.58)
+	return character.position + character.size * Vector2(0.5, 0.56)
 
 func accepts_drop(at: Vector2) -> bool:
 	var normalized := (at - character.position) / character.size

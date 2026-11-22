@@ -23,13 +23,22 @@ func _run() -> void:
 	game.sounds.fade.custom_step(1.0)
 	_expect(game.sounds.day.volume_linear < 0.001 and game.sounds.night.volume_linear > 0.6, "Crossfade ativa a ambiência noturna")
 	game.sounds.set_night(false)
-	var pulse: float = hud.home.idle_clock
+	var view = hud.home.poses
+	var pulse: float = view.phase
 	await create_timer(0.12).timeout
-	_expect(hud.home.idle_clock > pulse, "Evolin respira no quarto")
-	hud.home.idle_clock = 3.735
-	hud.home._process(0.0)
-	_expect(float(hud.home.eyelids.get_shader_parameter("closure")) > 0.95, "Quarto pisca em repouso")
-	hud.home.idle_clock = 0.0
+	_expect(view.phase > pulse, "Evolin respira no quarto")
+	var needs := {"Higiene": 20, "Fome": 20, "Energia": 20, "Felicidade": 20}
+	for pair in [["dirty","Higiene"], ["hungry","Fome"], ["sleepy","Energia"], ["sad","Felicidade"]]:
+		_expect(view.mood(needs, false) == pair[0], "Prioridade " + pair[0])
+		needs[pair[1]] = 70
+	_expect(view.mood(needs, false) == "idle", "Estado neutro")
+	view.blink_age = 0.06
+	view._process(0.0)
+	_expect(view.lids[0].visible and view.lids[1].scale.y > 0.95, "Quarto pisca em repouso")
+	view.react("happy", 2.0, 1)
+	_expect(view.pose == "happy" and not view.lids[0].visible, "Carinho troca pose e oculta pálpebras")
+	view._process(2.1)
+	_expect(view.pose == "idle", "Carinho termina")
 	var head: Vector2 = hud.home.pet_point()
 	_click(Vector2(4, 4))
 	await physics_frame
@@ -52,7 +61,7 @@ func _run() -> void:
 	_drag(head + Vector2(55, 0))
 	_expect(hud.home.dragging and hud.home.character.position.x > old_position.x, "Arraste move o Evolin no quarto")
 	game._process(0.0)
-	_expect(Engine.max_fps == 60, "Arraste usa 60 FPS")
+	_expect(Engine.max_fps == 30, "Arraste respeita 30 FPS")
 	_button_at(head + Vector2(55, 0), false)
 	game._process(0.0)
 	_expect(Engine.max_fps == 30, "Soltar restaura 30 FPS")
@@ -132,15 +141,15 @@ func _test_care(game: Node3D, hud: CanvasLayer) -> void:
 	hud.home.action_buttons[0].pressed.emit()
 	_expect(hud.home.action_buttons[0].choosing and hud.home.visible, "Toque anima o botão antes de abrir a atividade")
 	await hud.home.action_buttons[0].chosen
-	hud.feeding.idle_clock = 3.735
-	hud.feeding._process(0.0)
-	_expect(float(hud.feeding.eyelids.get_shader_parameter("closure")) > 0.95, "Alimentar pisca antes de receber comida")
+	hud.feeding.poses.blink_age = 0.06
+	hud.feeding.poses._process(0.0)
+	_expect(hud.feeding.poses.lids[0].visible, "Alimentar pisca antes de receber comida")
 	var drop: Vector2 = hud.feeding.character.get_global_rect().get_center()
 	hud.request_food_drop("Maçã", drop)
 	await create_timer(0.32).timeout
 	_expect(care.stock["Maçã"] == 1 and hud.feeding.stats["Fome"][1].value == 65, "Alimentação consome um item e atualiza o HUD")
 	await create_timer(0.18).timeout
-	_expect(hud.feeding.character.texture == hud.feeding.eating_pose, "Soltar o alimento inicia a animação de comer")
+	_expect(hud.feeding.poses.pose == "happy", "Soltar o alimento inicia a animação de comer")
 	await create_timer(0.62).timeout
 	hud.request_food_drop("Maçã", Vector2(4, 4))
 	await physics_frame
@@ -151,7 +160,7 @@ func _test_care(game: Node3D, hud: CanvasLayer) -> void:
 	await process_frame
 	_expect(care.stock["Maçã"] == 0, "Soltar alimento sobre o Evolin consome uma unidade")
 	hud._open(0)
-	_expect(not hud.feeding.animating and hud.feeding.character.texture == hud.feeding.idle_pose, "Sair de Alimentar encerra a mastigação")
+	_expect(not hud.feeding.animating and hud.feeding.poses.hold <= 0, "Sair de Alimentar encerra a mastigação")
 	hud.home.action_buttons[1].pressed.emit()
 	await hud.home.action_buttons[1].chosen
 	hud.bath.idle_clock = 3.735

@@ -1,4 +1,6 @@
 extends "res://scripts/ui/portrait_activity.gd"
+const PoseView = preload("res://scripts/pet/evolin_poses.gd")
+const PoseScene = preload("res://scenes/pet/evolin_poses.tscn")
 
 const REFERENCE = preload("res://assets/textures/rest/descansar.jpg")
 const ATLAS = preload("res://assets/textures/rest/atlas.jpg")
@@ -21,6 +23,7 @@ const BEDSIDE_POSITIONS := [
 	Rect2(552, 584, 115, 118),
 ]
 
+var poses: PoseView
 var motion := ShaderMaterial.new()
 var selected := 0
 var item_textures: Array[Texture2D] = []
@@ -41,6 +44,16 @@ func setup(owner_hud: CanvasLayer, profile: Care) -> void:
 	motion.shader = MOTION
 	motion.set_shader_parameter("sleeping", 0.0)
 	portrait.material = motion
+	_texture(self, preload("res://assets/textures/rest/stage_patch.png"), Rect2(94, 308, 367, 333))
+	var frame := Control.new()
+	frame.mouse_filter = MOUSE_FILTER_IGNORE
+	add_child(frame)
+	frame.position = Vector2(123, 278)
+	frame.size = Vector2(430, 430)
+	poses = PoseScene.instantiate()
+	frame.add_child(poses)
+	poses.setup(care)
+
 	for region: Rect2i in ITEM_ART:
 		item_textures.append(_cutout(ATLAS, region))
 	prop = _texture(self, item_textures[0], BEDSIDE_POSITIONS[0])
@@ -152,6 +165,8 @@ func _refresh_countdown(active: bool) -> void:
 
 func _set_sleeping(amount: float) -> void:
 	motion.set_shader_parameter("sleeping", amount)
+	poses.pivot_offset = poses.size * Vector2(0.5, 0.94)
+	poses.scale.y = 1.0 - 0.08 * amount
 
 func _choose_item(index: int) -> void:
 	hud.play_sound(&"toque")
