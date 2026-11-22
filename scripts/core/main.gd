@@ -1,5 +1,6 @@
 extends Node3D
 
+const State = preload("res://scripts/pet/evolin_state.gd")
 const Room = preload("res://scripts/core/room.gd")
 const Evolin = preload("res://scripts/pet/evolin.gd")
 const HUD = preload("res://scripts/ui/hud.gd")
@@ -29,6 +30,7 @@ var shake_ready_at := 0
 
 func _ready() -> void:
 	add_child(care)
+	evolin.bind_care(care)
 	add_child(sounds)
 	hud.sound_requested.connect(sounds.play)
 	hud.bind_care(care)
@@ -55,6 +57,7 @@ func _ready() -> void:
 	hud.play_pair.connect(func(final_pair: bool) -> void:
 		if not evolin.sleeping:
 			evolin.celebrate_pair(final_pair)
+			hud.home.poses.react(State.CELEBRATING if final_pair else State.PLAYING, 1.05 if final_pair else 0.5, 2 if final_pair else 1)
 			if final_pair:
 				hud.spark(hud.home.heart_point() if hud.home.visible else room.camera.unproject_position(evolin.heart_origin.global_position))
 	)
@@ -96,8 +99,9 @@ func _food_drop(food: String, at: Vector2) -> void:
 func _refresh_rest() -> void:
 	var level := Care.level_progress(care.xp).x
 	if last_level > 0 and level > last_level:
+		evolin.state.react(State.CELEBRATING, 1.55)
 		for screen in [hud.home, hud.feeding, hud.bath, hud.rest]:
-			screen.poses.react("celebrate", 1.55, 3)
+			screen.poses.react(State.CELEBRATING, 1.55, 3)
 		var center := get_viewport().get_visible_rect().size * Vector2(0.5, 0.42)
 		for color in [Color.HOT_PINK, Color.GOLD, Color.AQUAMARINE]:
 			hud.particles(hud.get_node("Interface"), center, color, 12)
@@ -113,9 +117,7 @@ func _refresh_rest() -> void:
 			growth_tween = create_tween()
 			growth_tween.tween_method(_show_growth, 0.0, 1.0, 0.22)
 			growth_tween.tween_method(_show_growth, 1.0, 0.0, 0.55)
-	evolin.set_mood(care.needs, care.sick)
 	var sleeping := care.rest_end > 0
-	evolin.sleeping = sleeping
 	hud.lamp_button.disabled = sleeping
 	if sleeping:
 		hud.home.release_grab()

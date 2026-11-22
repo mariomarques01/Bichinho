@@ -1,4 +1,5 @@
 extends Control
+const State = preload("res://scripts/pet/evolin_state.gd")
 const PoseView = preload("res://scripts/pet/evolin_poses.gd")
 const PoseScene = preload("res://scenes/pet/evolin_poses.tscn")
 
@@ -193,10 +194,10 @@ func shake() -> void:
 func jump() -> void:
 	if holding:
 		return
-	poses.react(poses.pose, 0.48, 1)
+	poses.react(State.PLAYING, 0.48, 1)
 
 func react() -> void:
-	poses.react("happy", 2.0, 1)
+	poses.react(State.HAPPY, 2.0, 1)
 
 func _atlas(region: Rect2) -> AtlasTexture:
 	var art := AtlasTexture.new()

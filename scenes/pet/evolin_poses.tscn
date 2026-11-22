@@ -1,7 +1,10 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/pet/evolin_poses.gd" id="1"]
+
+[ext_resource type="Resource" path="res://resources/pet/evolin_poses.tres" id="2"]
 
 [node name="EvolinPoses" type="Control"]
 mouse_filter = 2
 script = ExtResource("1")
+pose_map = ExtResource("2")

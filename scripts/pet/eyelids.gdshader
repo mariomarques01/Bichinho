@@ -4,7 +4,7 @@ render_mode blend_mix, depth_draw_never;
 uniform float closure : hint_range(0.0, 1.0) = 0.0;
 uniform vec4 lid_color : source_color = vec4(0.14, 0.65, 0.62, 1.0);
 uniform vec4 lash_color : source_color = vec4(0.14, 0.045, 0.24, 1.0);
-uniform bool smile = false;
+uniform float smile : hint_range(0.0, 1.0) = 0.0;
 uniform float yawn = 0.0;
 varying vec3 model_position;
 
@@ -23,7 +23,7 @@ void fragment() {
 	float grin = (1.0 - smoothstep(0.08, 0.23, abs(mouth.y + 0.25 - mouth.x * mouth.x * 0.7)))
 		* (1.0 - smoothstep(0.84, 1.0, mouth.x));
 	float opening = 1.0 - smoothstep(0.82, 1.0, length(mouth / vec2(0.55, 0.2 + yawn)));
-	float lips = max(smile ? grin : 0.0, opening * yawn);
+	float lips = max(smile * grin, opening * yawn);
 	coverage *= step(0.001, closure);
 	if (model_position.x < 0.10 || max(coverage, lips) < 0.01) {
 		discard;

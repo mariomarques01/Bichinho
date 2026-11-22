@@ -1,0 +1,26 @@
+[gd_resource type="Resource" load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://scripts/pet/evolin_pose_map.gd" id="map"]
+[ext_resource type="Texture2D" path="res://assets/poses/pose_idle.png" id="idle"]
+[ext_resource type="Texture2D" path="res://assets/poses/pose_happy.png" id="happy"]
+[ext_resource type="Texture2D" path="res://assets/poses/pose_sad.png" id="sad"]
+[ext_resource type="Texture2D" path="res://assets/poses/pose_hungry.png" id="hungry"]
+[ext_resource type="Texture2D" path="res://assets/poses/pose_dirty.png" id="dirty"]
+[ext_resource type="Texture2D" path="res://assets/poses/pose_sleepy.png" id="sleepy"]
+[ext_resource type="Texture2D" path="res://assets/poses/pose_celebrate.png" id="celebrate"]
+
+[resource]
+script = ExtResource("map")
+poses = Dictionary[StringName, Texture2D]({
+&"idle": ExtResource("idle"),
+&"feliz": ExtResource("happy"),
+&"triste": ExtResource("sad"),
+&"com_fome": ExtResource("hungry"),
+&"sujo": ExtResource("dirty"),
+&"cansado": ExtResource("sleepy"),
+&"comendo": ExtResource("hungry"),
+&"tomando_banho": ExtResource("happy"),
+&"dormindo": ExtResource("sleepy"),
+&"brincando": ExtResource("happy"),
+&"comemorando": ExtResource("celebrate")
+})

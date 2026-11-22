@@ -1,4 +1,5 @@
 extends "res://scripts/ui/portrait_activity.gd"
+const State = preload("res://scripts/pet/evolin_state.gd")
 const PoseView = preload("res://scripts/pet/evolin_poses.gd")
 const PoseScene = preload("res://scenes/pet/evolin_poses.tscn")
 
@@ -107,6 +108,8 @@ func open() -> void:
 	refresh()
 
 func close() -> void:
+	poses.cancel_reaction()
+	poses.scale = Vector2.ONE
 	hide()
 	if reaction and reaction.is_running():
 		reaction.kill()
@@ -199,6 +202,7 @@ func scrub(at: Vector2) -> void:
 		_notice("Banho · %d%%" % (progress * 10))
 
 func _splash(amount: float) -> void:
+	poses.react(State.BATHING, 0.55, 0)
 	if reaction and reaction.is_running():
 		reaction.kill()
 	movement.set_shader_parameter("response", amount)

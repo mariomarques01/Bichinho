@@ -1,5 +1,6 @@
 extends SceneTree
 
+const State = preload("res://scripts/pet/evolin_state.gd")
 const Main = preload("res://scenes/main/main.tscn")
 var failures := 0
 var checks := 0
@@ -27,18 +28,7 @@ func _run() -> void:
 	var pulse: float = view.phase
 	await create_timer(0.12).timeout
 	_expect(view.phase > pulse, "Evolin respira no quarto")
-	var needs := {"Higiene": 20, "Fome": 20, "Energia": 20, "Felicidade": 20}
-	for pair in [["dirty","Higiene"], ["hungry","Fome"], ["sleepy","Energia"], ["sad","Felicidade"]]:
-		_expect(view.mood(needs, false) == pair[0], "Prioridade " + pair[0])
-		needs[pair[1]] = 70
-	_expect(view.mood(needs, false) == "idle", "Estado neutro")
-	view.blink_age = 0.06
-	view._process(0.0)
-	_expect(view.lids[0].visible and view.lids[1].scale.y > 0.95, "Quarto pisca em repouso")
-	view.react("happy", 2.0, 1)
-	_expect(view.pose == "happy" and not view.lids[0].visible, "Carinho troca pose e oculta pálpebras")
-	view._process(2.1)
-	_expect(view.pose == "idle", "Carinho termina")
+	_test_pose_states(view)
 	var head: Vector2 = hud.home.pet_point()
 	_click(Vector2(4, 4))
 	await physics_frame
@@ -108,8 +98,11 @@ func _run() -> void:
 		game.care.changed.emit()
 		_expect(evolin.mood == pair[1], "A necessidade %s muda a expressão" % pair[0])
 		game.care.needs[pair[0]] = original[pair[0]]
+	game.care.needs["Felicidade"] = 80.0
 	game.care.changed.emit()
 	_expect(evolin.mood == evolin.Mood.FELIZ, "Recuperar as necessidades restaura o sorriso")
+	game.care.needs["Felicidade"] = original["Felicidade"]
+	game.care.changed.emit()
 	evolin.idle_wait = 0.0
 	evolin._update_idle(0.4)
 	_expect(evolin.idle_wait >= 6.0 and evolin.idle_wait <= 12.0 and absf(evolin.look) + evolin.stretch > 0.0, "Idle varia a pose e agenda outro gesto")
@@ -134,6 +127,63 @@ func _run() -> void:
 		print("EVO: %d verificações passaram." % checks)
 	quit(1 if failures > 0 else 0)
 
+func _test_pose_states(view: Control) -> void:
+	var needs := {"Higiene": 35, "Fome": 35, "Energia": 35, "Felicidade": 35}
+	_expect(State.from_needs(needs, true) == State.SLEEPING, "Sono tem prioridade sobre as necessidades")
+	for pair in [[State.DIRTY, "Higiene"], [State.HUNGRY, "Fome"], [State.TIRED, "Energia"], [State.SAD, "Felicidade"]]:
+		_expect(State.from_needs(needs, false) == pair[0], "Prioridade " + String(pair[0]))
+		needs[pair[1]] = 70
+	_expect(State.from_needs(needs, false) == State.IDLE, "Estado neutro")
+	needs["Felicidade"] = 80
+	_expect(State.from_needs(needs, false) == State.HAPPY, "Felicidade 80 seleciona feliz")
+	for key: StringName in [State.IDLE, State.HAPPY, State.SAD, State.HUNGRY, State.DIRTY, State.TIRED,
+			State.EATING, State.BATHING, State.SLEEPING, State.PLAYING, State.CELEBRATING]:
+		_expect(view.pose_map.poses.has(key) and view.pose_map.texture_for(key) != null, "Textura configurada para " + String(key))
+	view.blink_age = 0.06
+	view._process(0.0)
+	_expect(view.lids[0].visible and view.lids[1].scale.y > 0.95, "Quarto pisca em repouso")
+	var events: Array = []
+	var capture := func(previous: StringName, current: StringName) -> void:
+		events.append([previous, current])
+	view.state.state_changed.connect(capture)
+	var idle: Sprite2D = view.front
+	view.react(State.HAPPY, 2.0, 1)
+	var happy: Sprite2D = view.front
+	_expect(view.state.current == State.HAPPY and not view.lids[0].visible, "Carinho troca pose e oculta pálpebras")
+	view.state.refresh()
+	_expect(events == [[State.IDLE, State.HAPPY]], "Sinal informa a troca uma única vez")
+	view.fade.pause()
+	view.fade.custom_step(0.1)
+	_expect(is_equal_approx(idle.modulate.a, 0.5) and is_equal_approx(happy.modulate.a, 0.5), "Crossfade de 0,20 s mistura as duas poses no ponto médio")
+	view._process(2.1)
+	_expect(view.state.current == State.IDLE and events.back() == [State.HAPPY, State.IDLE], "Carinho termina e restaura o estado pelas necessidades")
+	_expect(is_equal_approx(idle.modulate.a, 0.5) and is_equal_approx(happy.modulate.a, 0.5), "Interromper o crossfade mantém a opacidade atual")
+	view.fade.custom_step(0.21)
+	var map: Resource = view.pose_map
+	view.pose_map = map.duplicate()
+	var alternate: Texture2D = map.texture_for(State.SAD)
+	view.pose_map.poses[State.HAPPY] = alternate
+	view.pose_map.poses.erase(State.TIRED)
+	_expect(view.pose_map.texture_for(State.TIRED) == idle.texture, "Pose ausente usa a textura idle")
+	view.react(State.HAPPY, 1.0, 0)
+	_expect(view.front.texture == alternate, "Resource personalizado troca a textura selecionada")
+	view.pose_map = map
+	view.cancel_reaction()
+	view.state.state_changed.disconnect(capture)
+	view.react(State.PLAYING, 1.0, 1)
+	_expect(view.state.current == State.PLAYING and view.jumps == 1, "Pulo ativa o estado brincando")
+	view.react(State.CELEBRATING, 1.0, 0)
+	view.react(State.PLAYING, 1.0, 0)
+	_expect(view.state.current == State.CELEBRATING, "Comemoração tem prioridade sobre brincadeira")
+	var care = view.care
+	care.rest_end = care.now() + 60
+	care.changed.emit()
+	view.react(State.EATING, 1.0, 0)
+	_expect(view.state.current == State.SLEEPING, "Sono encerra reação ativa e impede uma nova")
+	care.rest_end = 0
+	care.changed.emit()
+	_expect(view.state.current == State.IDLE, "Acordar recalcula as necessidades sem restaurar a reação anterior")
+
 func _test_care(game: Node3D, hud: CanvasLayer) -> void:
 	var care = game.care
 	care.needs["Fome"] = 50.0
@@ -149,7 +199,7 @@ func _test_care(game: Node3D, hud: CanvasLayer) -> void:
 	await create_timer(0.32).timeout
 	_expect(care.stock["Maçã"] == 1 and hud.feeding.stats["Fome"][1].value == 65, "Alimentação consome um item e atualiza o HUD")
 	await create_timer(0.18).timeout
-	_expect(hud.feeding.poses.pose == "happy", "Soltar o alimento inicia a animação de comer")
+	_expect(hud.feeding.poses.state.current == State.EATING, "Soltar o alimento inicia a animação de comer")
 	await create_timer(0.62).timeout
 	hud.request_food_drop("Maçã", Vector2(4, 4))
 	await physics_frame
@@ -160,7 +210,7 @@ func _test_care(game: Node3D, hud: CanvasLayer) -> void:
 	await process_frame
 	_expect(care.stock["Maçã"] == 0, "Soltar alimento sobre o Evolin consome uma unidade")
 	hud._open(0)
-	_expect(not hud.feeding.animating and hud.feeding.poses.hold <= 0, "Sair de Alimentar encerra a mastigação")
+	_expect(not hud.feeding.animating and hud.feeding.poses.state.current != State.EATING, "Sair de Alimentar encerra a mastigação")
 	hud.home.action_buttons[1].pressed.emit()
 	await hud.home.action_buttons[1].chosen
 	hud.bath.idle_clock = 3.735
@@ -177,6 +227,7 @@ func _test_care(game: Node3D, hud: CanvasLayer) -> void:
 	for stroke in 10:
 		hud.bath.scrub(Vector2(350, 500))
 	_expect(roundi(care.needs["Higiene"]) == 72 and hud.bath.readings[1].text == "72%", "Banho recupera higiene e atualiza o HUD após dez movimentos")
+	_expect(hud.bath.poses.state.current == State.BATHING, "Ensaboar ativa o estado de banho")
 	_expect(float(hud.bath.movement.get_shader_parameter("response")) > 0.0, "Ensaboar faz o Evolin se mexer na banheira")
 	hud.tabs[2].pressed.emit()
 	_expect(hud.rest.visible and not hud.safe.visible, "Descansar abre o quarto noturno ilustrado")
@@ -186,6 +237,7 @@ func _test_care(game: Node3D, hud: CanvasLayer) -> void:
 	_expect(hud.rest.panel.visible, "Tocar na cama abre as durações")
 	hud.rest.duration_buttons[0].pressed.emit()
 	_expect(care.rest_end > care.now() and game.evolin.sleeping, "Descanso ativa o estado de sono")
+	_expect(hud.rest.poses.state.current == State.SLEEPING, "Pose de descanso acompanha o perfil")
 	await create_timer(0.32).timeout
 	_expect(float(hud.rest.motion.get_shader_parameter("sleeping")) > 0.4, "Evolin se encolhe para dormir")
 	care.needs["Energia"] = 40.0
@@ -209,6 +261,7 @@ func _test_care(game: Node3D, hud: CanvasLayer) -> void:
 	_expect(hud.menu.combo_bonus == 3 and hud.menu.streak == 3, "Três pares seguidos somam três pontos de combo")
 	_expect(care.coins == balance + 8, "Concluir o jogo da memória concede moedas")
 	_expect(game.evolin.reaction.is_running(), "O último par aciona a comemoração")
+	_expect(hud.home.poses.state.current == State.CELEBRATING, "Último par seleciona a pose de comemoração")
 	var rewards: Array[Label] = []
 	for child in hud.get_node("Interface").get_children():
 		if child is Label and child.text in ["+12 XP", "+8 moedas"]:
