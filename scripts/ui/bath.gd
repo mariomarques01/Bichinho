@@ -1,4 +1,6 @@
 extends "res://scripts/ui/portrait_activity.gd"
+const PoseView = preload("res://scripts/pet/evolin_poses.gd")
+const PoseScene = preload("res://scenes/pet/evolin_poses.tscn")
 
 const Blink = preload("res://scripts/pet/blink.gd")
 const MOTION = preload("res://scripts/ui/bath_motion.gdshader")
@@ -17,6 +19,7 @@ const TOOL_SPRITES := [
 const BUBBLE := Rect2i(1074, 411, 42, 44)
 const FOAM := Rect2i(848, 407, 121, 70)
 
+var poses: PoseView
 var movement := ShaderMaterial.new()
 var reaction: Tween
 var idle_clock := 0.0
@@ -40,6 +43,20 @@ func setup(owner_hud: CanvasLayer, profile: Care) -> void:
 	movement.shader = MOTION
 	movement.set_shader_parameter("atlas_art", ATLAS)
 	portrait.material = movement
+	_texture(self, preload("res://assets/textures/bath/stage_patch.png"), Rect2(126, 298, 371, 283))
+	var frame := Control.new()
+	frame.mouse_filter = MOUSE_FILTER_IGNORE
+	add_child(frame)
+	frame.position = Vector2(117, 218)
+	frame.size = Vector2(460, 395)
+	poses = PoseScene.instantiate()
+	frame.add_child(poses)
+	poses.setup(care)
+	var foam_edge := AtlasTexture.new()
+	foam_edge.atlas = REFERENCE
+	foam_edge.region = Rect2(95, 578, 515, 100)
+	_texture(self, foam_edge, foam_edge.region)
+
 	for region: Rect2i in TOOL_SPRITES:
 		assets.append(_cutout(ATLAS, region))
 	bubble_art = _cutout(ATLAS, BUBBLE)
@@ -185,8 +202,11 @@ func _splash(amount: float) -> void:
 	if reaction and reaction.is_running():
 		reaction.kill()
 	movement.set_shader_parameter("response", amount)
+	poses.pivot_offset = poses.size * Vector2(0.5, 0.94)
+	poses.scale = Vector2(1.0 + 0.05 * amount, 1.0 - 0.08 * amount)
 	reaction = create_tween()
-	reaction.tween_property(movement, "shader_parameter/response", 0.0, 0.40).set_ease(Tween.EASE_OUT)
+	reaction.parallel().tween_property(poses, "scale", Vector2.ONE, 0.40)
+	reaction.parallel().tween_property(movement, "shader_parameter/response", 0.0, 0.40).set_ease(Tween.EASE_OUT)
 
 func _spawn(at: Vector2) -> void:
 	var art := foam_art if selected == 1 else bubble_art

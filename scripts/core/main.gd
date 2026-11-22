@@ -14,6 +14,7 @@ const WardrobeArt = preload("res://scripts/inventory/wardrobe_art.gd")
 var face_accessories: WardrobeArt
 var care := Care.new()
 var sounds := Sounds.new()
+var last_level := 0
 var displayed_stage := ""
 var growth_tween: Tween
 var was_sleeping := false
@@ -35,8 +36,6 @@ func _ready() -> void:
 	face_accessories = WardrobeArt.attach(canvas, care.wardrobe, Vector2.LEFT, Vector2.RIGHT)
 	canvas.move_child(face_accessories, 0)
 	face_accessories.hide()
-	hud.home.evolin = evolin
-	hud.feeding.evolin = evolin
 	hud.activity_changed.connect(_activity_changed)
 	_activity_changed(-1)
 	hud.food_drop.connect(_food_drop)
@@ -95,6 +94,14 @@ func _food_drop(food: String, at: Vector2) -> void:
 		hud.feeding.serve(food, at)
 
 func _refresh_rest() -> void:
+	var level := Care.level_progress(care.xp).x
+	if last_level > 0 and level > last_level:
+		for screen in [hud.home, hud.feeding, hud.bath, hud.rest]:
+			screen.poses.react("celebrate", 1.55, 3)
+		var center := get_viewport().get_visible_rect().size * Vector2(0.5, 0.42)
+		for color in [Color.HOT_PINK, Color.GOLD, Color.AQUAMARINE]:
+			hud.particles(hud.get_node("Interface"), center, color, 12)
+	last_level = level
 	if displayed_stage != care.evolution.stage:
 		var animate := displayed_stage != ""
 		displayed_stage = care.evolution.stage
@@ -109,7 +116,6 @@ func _refresh_rest() -> void:
 	evolin.set_mood(care.needs, care.sick)
 	var sleeping := care.rest_end > 0
 	evolin.sleeping = sleeping
-	hud.home.sleeping = sleeping
 	hud.lamp_button.disabled = sleeping
 	if sleeping:
 		hud.home.release_grab()
@@ -121,11 +127,6 @@ func _refresh_rest() -> void:
 		was_sleeping = sleeping
 
 func _process(delta: float) -> void:
-	var playing := hud.menu.mode == 4 and (hud.menu.jumping or not hud.menu.cards.is_empty())
-	var dragging := hud.home.dragging or hud.bath.dragging or is_instance_valid(hud.feeding.ghost)
-	var fps := 60 if playing or dragging else 30
-	if Engine.max_fps != fps:
-		Engine.max_fps = fps
 	if hud.menu.mode == 5 and (care.wardrobe.equipped.has(care.wardrobe.HAT) or care.wardrobe.equipped.has(care.wardrobe.GLASSES)):
 		var face := evolin.face
 		var eye := Vector3(0.35, 0.478 + 0.248 * 0.35, 0.142)
@@ -247,8 +248,9 @@ func _show_growth(pulse: float) -> void:
 	skin.albedo_color = growth.tint()
 	skin.emission_energy_multiplier = 0.22 + pulse
 	evolin.sprite_factor = factor
-	for sprite: TextureRect in [hud.home.character, hud.feeding.character]:
-		sprite.self_modulate = color
+	for screen in [hud.home, hud.feeding, hud.bath, hud.rest]:
+		screen.poses.modulate = color
+		screen.poses.growth_factor = factor
 	for portrait: TextureRect in [hud.bath.portrait, hud.rest.portrait]:
 		var shader := portrait.material as ShaderMaterial
 		shader.set_shader_parameter("growth_tint", color)
